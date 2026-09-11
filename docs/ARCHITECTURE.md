@@ -44,6 +44,37 @@ for the full concern-by-concern table.
 The product must never claim to produce the exact score used by any ATS vendor — call it
 an "ATS-style compatibility" or "Resume Health" score and explain the scoring model.
 
+## Access model: anonymous quick analysis vs. authenticated app
+
+Two tiers (master spec, "Current Implementation Status" + Sections 3, 6, 9):
+
+**Anonymous (public).** Upload → parse → deterministic ATS/Resume Health analysis → score
+plus *limited basic findings* → TTL cleanup. No AI calls (cost and abuse control), no
+persistence, no version history, no JD matching, no export.
+
+**Authenticated.** Upload or import a temporary result → full AI analysis → detailed
+suggestions → editor → AI rewrite → versions → optional JD → job match → tailored version
+→ preview → export.
+
+```
+Public:   /  ·  /analyze  ·  /login  ·  /signup  ·  anonymous quick-analysis endpoints
+Private:  /dashboard  ·  saved resumes  ·  detailed analysis  ·  editor
+          versions  ·  job match  ·  export
+```
+
+Hard constraints:
+
+- Anonymous quick analysis **never** creates a persistent user-owned `Resume` row. Temp
+  state lives in `anonymous_analysis_sessions` (session id, temp parsed data/metrics,
+  `created_at`, `expires_at`) and expires on its TTL.
+- After authentication the temp session may be **explicitly imported** into the account —
+  never silently.
+- Public endpoints are explicitly scoped, strictly rate-limited, and cannot reach
+  user-owned data. Anonymous session records are inaccessible outside their session token.
+- Gated content must not be sent to an anonymous client at all. The UI shows locked
+  *teasers* (`LockedFeature`) describing what an account unlocks — it never blurs real data
+  that was shipped to the browser anyway.
+
 ## Authentication (Phase 2)
 
 Supabase Auth issues the session; the browser holds it via `@supabase/supabase-js`

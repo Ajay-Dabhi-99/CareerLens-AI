@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/resumes', label: 'Resumes', icon: FileText, end: false },
   { to: '/job-match', label: 'Job Match', icon: Target, end: false },
   { to: '/versions', label: 'Versions', icon: History, end: false },

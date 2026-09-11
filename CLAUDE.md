@@ -17,9 +17,47 @@ requirements that conflict with it.
 > feature, read "Gemini API" / "GeminiProvider" — the `AIProvider` interface in
 > `packages/types/src/ai.ts` is what actually matters and is provider-agnostic.
 
+## Access model (free vs. gated)
+
+The app is **not** login-only. There are two tiers:
+
+| | Anonymous (free, no signup) | Authenticated |
+|---|---|---|
+| Upload a resume | ✅ | ✅ |
+| Resume Health / ATS-style score | ✅ | ✅ |
+| Findings | **Limited basic findings only** | Full detail |
+| AI analysis, detailed suggestions | 🔒 teaser only | ✅ |
+| Editor, AI rewrites, diff/approval | 🔒 teaser only | ✅ |
+| Version history | 🔒 teaser only | ✅ |
+| Job Description matching | 🔒 teaser only | ✅ |
+| Export (PDF/DOCX) | 🔒 teaser only | ✅ |
+| Data persistence | ❌ temporary, TTL-expired | ✅ owned + persisted |
+
+Rules that follow from this:
+
+- **Locked features must still be visible as teasers.** Anonymous users see the locked
+  panels (blurred/disabled with a lock + "Sign in to unlock" CTA) so they understand what
+  an account gives them. Never hide them entirely, and never render real locked content
+  behind a blur — the gated data must not reach the client at all.
+- **Anonymous analysis never creates persistent user-owned records.** It lives in
+  `anonymous_analysis_sessions` (session id, temp parsed data/metrics, `created_at`,
+  `expires_at`) and must expire on its TTL.
+- After sign-in, a temporary session may be **explicitly imported** into the account.
+  Never import silently.
+- Public endpoints must be explicitly scoped, **strictly rate-limited**, and structurally
+  incapable of reading user-owned data.
+- Anonymous session records must be inaccessible outside their short-lived session token.
+- Anonymous users get **no** AI calls (cost/abuse control) — their score comes from the
+  deterministic ATS engine only.
+
+Public routes: `/`, `/analyze`, `/login`, `/signup`, and the anonymous quick-analysis
+endpoints. Everything else (dashboard, saved resumes, detailed analysis, editor, versions,
+job match, export) is private.
+
 ## Critical product rules
 
 1. Job Description is optional. Resume-only analysis is a complete product flow by itself.
+   The JD feature itself requires authentication (its results are persistent user data).
 2. Never invent skills, metrics, companies, certifications, dates or achievements. If the AI
    needs information not present in the resume, set `requiresVerification: true`.
 3. Never silently overwrite user content. Every AI rewrite is previewable and goes through

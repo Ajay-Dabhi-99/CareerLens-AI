@@ -11,7 +11,7 @@ export function NotFoundPage() {
       description="The page you're looking for doesn't exist."
       action={
         <Button asChild>
-          <Link to="/">Back to dashboard</Link>
+          <Link to="/">Back to home</Link>
         </Button>
       }
     />

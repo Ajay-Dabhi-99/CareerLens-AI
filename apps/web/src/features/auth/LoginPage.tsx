@@ -23,7 +23,7 @@ export function LoginPage() {
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) });
 
   if (status === 'authenticated') {
-    const from = (location.state as { from?: string } | null)?.from ?? '/';
+    const from = (location.state as { from?: string } | null)?.from ?? '/dashboard';
     return <Navigate to={from} replace />;
   }
 
@@ -31,7 +31,7 @@ export function LoginPage() {
     setSubmitError(null);
     try {
       await signIn(values.email, values.password);
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Could not sign in');
     }

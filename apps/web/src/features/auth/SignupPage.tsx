@@ -25,7 +25,7 @@ export function SignupPage() {
   } = useForm<SignupValues>({ resolver: zodResolver(signupSchema) });
 
   if (status === 'authenticated') {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   async function onSubmit(values: SignupValues) {
@@ -36,7 +36,7 @@ export function SignupPage() {
         setConfirmationSent(true);
         return;
       }
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Could not create account');
     }
