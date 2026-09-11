@@ -59,9 +59,9 @@ describe('App', () => {
       render(<App />);
 
       expect(
-        await screen.findByRole('heading', { name: /see how your resume scores/i }),
+        await screen.findByRole('heading', { level: 1, name: /upload your cv/i }),
       ).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Log in' })).not.toBeInTheDocument();
     });
 
     it('lets an anonymous visitor open the free analyze page', async () => {
@@ -82,10 +82,10 @@ describe('App', () => {
 
       render(<App />);
 
-      expect(await screen.findByRole('heading', { name: /unlock with a free account/i })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: /log in to unlock these/i })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: /full ai review/i })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: /job description matching/i })).toBeInTheDocument();
-      expect(screen.getAllByRole('link', { name: /sign in to unlock/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('link', { name: /log in to unlock/i }).length).toBeGreaterThan(0);
     });
   });
 
@@ -96,7 +96,7 @@ describe('App', () => {
 
       render(<App />);
 
-      expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Log in' })).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Welcome back' })).not.toBeInTheDocument();
     });
 
@@ -141,12 +141,12 @@ describe('App', () => {
 
       render(<App />);
 
-      fireEvent.click(await screen.findByRole('button', { name: /sign out/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /log out/i }));
 
       await waitFor(() => {
         expect(mockAuthApi.signOut).toHaveBeenCalledTimes(1);
       });
-      expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Log in' })).toBeInTheDocument();
     });
   });
 });

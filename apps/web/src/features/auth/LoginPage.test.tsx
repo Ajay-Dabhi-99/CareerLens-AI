@@ -41,7 +41,7 @@ describe('LoginPage', () => {
       target: { value: 'not-an-email' },
     });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
     expect(await screen.findByText('Enter a valid email address')).toBeInTheDocument();
     expect(mockAuthApi.signInWithPassword).not.toHaveBeenCalled();
@@ -53,7 +53,7 @@ describe('LoginPage', () => {
     fireEvent.change(await screen.findByLabelText('Email'), {
       target: { value: 'jane@example.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
     expect(await screen.findByText('Password is required')).toBeInTheDocument();
     expect(mockAuthApi.signInWithPassword).not.toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('LoginPage', () => {
       target: { value: 'jane@example.com' },
     });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
     await waitFor(() => {
       expect(mockAuthApi.signInWithPassword).toHaveBeenCalledWith(
@@ -85,7 +85,7 @@ describe('LoginPage', () => {
       target: { value: 'jane@example.com' },
     });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong-password' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
 
     expect(await screen.findByText('Invalid login credentials')).toBeInTheDocument();
   });

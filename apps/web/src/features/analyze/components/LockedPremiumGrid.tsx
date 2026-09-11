@@ -48,11 +48,11 @@ export function LockedPremiumGrid() {
     <section aria-labelledby="unlock-heading" className="space-y-4">
       <div className="space-y-1">
         <h2 id="unlock-heading" className="text-base font-semibold">
-          Unlock with a free account
+          Log in to unlock these
         </h2>
         <p className="text-sm text-muted-foreground">
-          Your quick check covers the basics. Everything below needs an account so your work can
-          be saved and stays yours.
+          The score above is yours either way. Everything below is AI-powered, so it needs a
+          login — that way your work is saved and stays yours.
         </p>
       </div>
 

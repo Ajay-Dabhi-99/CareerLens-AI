@@ -34,10 +34,10 @@ export function UserMenu() {
         size="sm"
         onClick={handleSignOut}
         disabled={signingOut}
-        aria-label="Sign out"
+        aria-label="Log out"
       >
         <LogOut />
-        <span className="hidden sm:inline">{signingOut ? 'Signing out…' : 'Sign out'}</span>
+        <span className="hidden sm:inline">{signingOut ? 'Logging out…' : 'Log out'}</span>
       </Button>
     </div>
   );

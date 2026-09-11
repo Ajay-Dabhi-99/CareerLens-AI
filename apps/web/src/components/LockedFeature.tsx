@@ -59,7 +59,7 @@ export function LockedFeature({
         ) : null}
 
         <Button asChild size="sm" variant="outline" className="w-full">
-          <Link to="/signup">Sign in to unlock</Link>
+          <Link to="/signup">Log in to unlock</Link>
         </Button>
       </CardContent>
     </Card>

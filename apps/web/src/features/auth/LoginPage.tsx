@@ -33,14 +33,14 @@ export function LoginPage() {
       await signIn(values.email, values.password);
       navigate('/dashboard', { replace: true });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Could not sign in');
+      setSubmitError(error instanceof Error ? error.message : 'Could not log in');
     }
   }
 
   return (
     <AuthLayout
-      title="Sign in"
-      description="Welcome back. Sign in to analyze and improve your resume."
+      title="Log in"
+      description="Welcome back. Log in to analyze and improve your resume."
       footer={
         <>
           Don&apos;t have an account?{' '}
@@ -50,7 +50,7 @@ export function LoginPage() {
         </>
       }
     >
-      {submitError ? <ErrorState title="Sign in failed" description={submitError} /> : null}
+      {submitError ? <ErrorState title="Login failed" description={submitError} /> : null}
 
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="space-y-2">
@@ -88,7 +88,7 @@ export function LoginPage() {
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
+          {isSubmitting ? 'Logging in…' : 'Log in'}
         </Button>
       </form>
     </AuthLayout>

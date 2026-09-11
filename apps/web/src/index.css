@@ -120,6 +120,138 @@
   }
 }
 
+@keyframes cl-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes cl-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cl-sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes cl-ring {
+  from {
+    stroke-dashoffset: var(--ring-circumference);
+  }
+  to {
+    stroke-dashoffset: var(--ring-offset);
+  }
+}
+
+@keyframes cl-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0);
+  }
+}
+
+/*
+ * Aurora blobs. Only transform/opacity are animated (compositor-only) — animating
+ * `filter` here would repaint a large blurred surface every frame and tank scrolling,
+ * so the blur is applied statically.
+ */
+@keyframes cl-aurora-a {
+  0%,
+  100% {
+    transform: translate3d(-8%, -4%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, 6%, 0) scale(1.12);
+  }
+}
+
+@keyframes cl-aurora-b {
+  0%,
+  100% {
+    transform: translate3d(6%, 2%, 0) scale(1.08);
+  }
+  50% {
+    transform: translate3d(-6%, -6%, 0) scale(0.94);
+  }
+}
+
+@keyframes cl-count {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@utility aurora-a {
+  animation: cl-aurora-a 18s ease-in-out infinite;
+}
+
+@utility aurora-b {
+  animation: cl-aurora-b 22s ease-in-out infinite;
+}
+
+@utility animate-count {
+  animation: cl-count 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s backwards;
+}
+
+/* Film grain — softens flat gradients and pairs with the glass surfaces. */
+@utility grain {
+  position: relative;
+}
+
+@utility grain-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+@utility animate-rise {
+  opacity: 0;
+  animation: cl-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@utility animate-fade {
+  opacity: 0;
+  animation: cl-fade 0.8s ease-out forwards;
+}
+
+@utility animate-sweep {
+  transform-origin: left;
+  animation: cl-sweep 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@utility animate-ring {
+  animation: cl-ring 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@utility animate-drift {
+  animation: cl-drift 9s ease-in-out infinite;
+}
+
+/*
+ * Reduced motion: skip the entrance choreography entirely rather than fast-forwarding it,
+ * so elements that start at opacity 0 still end up visible.
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -128,5 +260,11 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .animate-rise,
+  .animate-fade {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

@@ -22,7 +22,7 @@ describe('LockedFeature', () => {
     renderLocked();
 
     expect(screen.getByRole('heading', { name: 'Full AI review' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /sign in to unlock/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /log in to unlock/i })).toHaveAttribute(
       'href',
       '/signup',
     );

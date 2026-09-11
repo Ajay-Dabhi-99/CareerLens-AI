@@ -30,7 +30,7 @@ export function PublicLayout() {
           ) : (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/login">Sign in</Link>
+                <Link to="/login">Log in</Link>
               </Button>
               <Button asChild size="sm">
                 <Link to="/signup">Get started</Link>
@@ -44,8 +44,19 @@ export function PublicLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground sm:px-6">
-        Resume analysis without an account is temporary and is deleted automatically.
+      <footer className="border-t border-border px-4 py-8 sm:px-6">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left">
+          <div className="flex items-center gap-2">
+            <ScanLine className="size-4 text-primary" aria-hidden="true" />
+            <span className="text-sm font-medium">CareerLens AI</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The free check is temporary and is cleared automatically.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Developed by <span className="font-medium text-foreground">Ajay Dabhi</span>
+          </p>
+        </div>
       </footer>
     </div>
   );

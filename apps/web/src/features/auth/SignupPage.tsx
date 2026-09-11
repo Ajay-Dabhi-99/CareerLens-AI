@@ -50,7 +50,7 @@ export function SignupPage() {
         <>
           Already have an account?{' '}
           <Link to="/login" className="font-medium text-primary hover:underline">
-            Sign in
+            Log in
           </Link>
         </>
       }
@@ -65,7 +65,7 @@ export function SignupPage() {
         </Alert>
       ) : (
         <>
-          {submitError ? <ErrorState title="Sign up failed" description={submitError} /> : null}
+          {submitError ? <ErrorState title="Could not create account" description={submitError} /> : null}
 
           <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
             <div className="space-y-2">
