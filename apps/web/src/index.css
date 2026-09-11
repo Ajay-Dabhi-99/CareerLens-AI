@@ -1,0 +1,40 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  max-width: 720px;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+}
+
+.tagline {
+  opacity: 0.75;
+}
+
+.api-status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+}
+
+.api-status--checking {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.api-status--online {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.api-status--offline {
+  background: #fee2e2;
+  color: #991b1b;
+}
