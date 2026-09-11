@@ -1,6 +1,7 @@
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ApiStatusBadge } from '@/components/layout/ApiStatusBadge';
+import { UserMenu } from '@/components/layout/UserMenu';
 
 export interface HeaderProps {
   title: string;
@@ -20,8 +21,9 @@ export function Header({ title, onOpenSidebar }: HeaderProps) {
         <Menu />
       </Button>
       <h1 className="text-sm font-semibold">{title}</h1>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-3">
         <ApiStatusBadge />
+        <UserMenu />
       </div>
     </header>
   );

@@ -2,6 +2,7 @@ import { FileText, Target, TrendingUp, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/EmptyState';
 import { StatCard } from '@/features/dashboard/components/StatCard';
+import { ApiIdentityCard } from '@/features/dashboard/components/ApiIdentityCard';
 
 export function DashboardPage() {
   return (
@@ -19,6 +20,8 @@ export function DashboardPage() {
         <StatCard icon={TrendingUp} label="Avg. resume health" value="—" hint="No analysis yet" />
         <StatCard icon={Target} label="Job matches" value="0" hint="Optional, add a JD anytime" />
       </div>
+
+      <ApiIdentityCard />
 
       <EmptyState
         icon={Upload}

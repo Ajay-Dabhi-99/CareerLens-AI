@@ -44,6 +44,29 @@ for the full concern-by-concern table.
 The product must never claim to produce the exact score used by any ATS vendor — call it
 an "ATS-style compatibility" or "Resume Health" score and explain the scoring model.
 
+## Authentication (Phase 2)
+
+Supabase Auth issues the session; the browser holds it via `@supabase/supabase-js`
+(`apps/web/src/lib/supabase.ts`, anon key only). `AuthProvider`
+(`apps/web/src/features/auth/`) exposes session state and subscribes to
+`onAuthStateChange`; `ProtectedRoute` gates every private route.
+
+For calls to our own API, the frontend attaches the Supabase access token as
+`Authorization: Bearer <token>` (`apps/web/src/lib/api.ts` → `authedFetch`). On the
+backend, `registerAuth` (`apps/api/src/modules/auth/`) adds an `app.requireAuth`
+preHandler that verifies the token through the `AuthVerifier` interface — implemented by
+Supabase, injectable in tests so auth is testable with no live project. **Every private
+route must use `requireAuth`**, and must additionally enforce row ownership in its
+queries; authentication alone is not authorization.
+
+The service role key stays server-side only (`apps/api/.env`) and bypasses RLS — use it
+only after the route has established who is calling.
+
+**Google Sign-In is deliberately deferred** (decided 2026-09-11): it needs a Google Cloud
+Console OAuth client wired into Supabase's Google provider. Email/password is the working
+path until that external setup is done; adding Google later is a Supabase dashboard change
+plus a `signInWithOAuth({ provider: 'google' })` button, no architecture change.
+
 ## Canonical domain model
 
 Defined in `packages/types/src/resume.ts`, `ats.ts`, `job.ts`, `ai.ts`. Mirrored as Zod

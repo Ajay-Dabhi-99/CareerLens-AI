@@ -12,11 +12,18 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
 
 ## Status
 
-**Phase 1 — UI System.** Phase 0 (monorepo, React app, Fastify API, shared
-types/validation packages, lint, tests, environment config) is done. Phase 1 adds
-Tailwind CSS v4 + shadcn-style design tokens, an app shell (responsive sidebar + header),
-a dashboard shell, and reusable loading/error/empty state components — no backend
-dependency required. See `docs/ARCHITECTURE.md` for the full 19-phase build order.
+**Phase 2 — Authentication.** Done so far:
+
+- **Phase 0 — Foundation:** monorepo, React app, Fastify API, shared types/validation
+  packages, lint, tests, environment config.
+- **Phase 1 — UI System:** Tailwind CSS v4 + shadcn-style design tokens, responsive app
+  shell (sidebar + header), dashboard shell, reusable loading/error/empty states.
+- **Phase 2 — Authentication:** Supabase Auth email/password sign-up, login, session
+  persistence, sign-out, protected routes, and a token-verifying API (`GET /api/me`).
+  Google Sign-In is deferred until the Google Cloud Console OAuth client is set up —
+  see `docs/ARCHITECTURE.md`.
+
+See `docs/ARCHITECTURE.md` for the full 19-phase build order.
 
 ## Getting started
 
