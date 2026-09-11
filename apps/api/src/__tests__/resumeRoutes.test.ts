@@ -20,8 +20,17 @@ const testEnv = {
 
 const AUTHED_USER = { id: 'user-1', email: 'jane@example.com' };
 
-function pdfBuffer(): Buffer {
-  return Buffer.from('%PDF-1.7\nresume contents', 'utf8');
+/**
+ * These tests cover routing, auth and limits, so they upload plain text — it parses
+ * deterministically. Real PDF extraction is covered in textExtraction.test.ts.
+ */
+function resumeBuffer(): Buffer {
+  return Buffer.from('Jane Doe\njane@example.com\n\nEXPERIENCE\nEngineer, Acme\n', 'utf8');
+}
+
+/** Valid PDF magic bytes but not a readable document. */
+function corruptPdfBuffer(): Buffer {
+  return Buffer.from('%PDF-1.7\nnot actually a pdf', 'utf8');
 }
 
 /** Minimal multipart body so we exercise the real @fastify/multipart path. */
@@ -103,7 +112,7 @@ describe('public quick analysis', () => {
 
   it('accepts an anonymous upload and returns a session token', async () => {
     const app = await appWith(deps);
-    const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
 
     const response = await app.inject({
       method: 'POST',
@@ -115,15 +124,37 @@ describe('public quick analysis', () => {
     expect(response.statusCode).toBe(201);
     const body = response.json();
     expect(body.sessionToken).toBe('raw-token');
-    expect(body.status).toBe('awaiting-analysis');
-    expect(body.file.type).toBe('pdf');
+    expect(body.status).toBe('parsed');
+    // The upload was parsed into structured data, not just stored.
+    expect(body.resume.personal.fullName).toBe('Jane Doe');
+    expect(body.resume.personal.email).toBe('jane@example.com');
+    expect(body.detectedSections).toContain('experience');
+
+    await app.close();
+  });
+
+  it('returns a readable error for a file it cannot parse', async () => {
+    const app = await appWith(deps);
+    const { payload, headers } = multipart('cv.pdf', corruptPdfBuffer());
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/public/analyze',
+      payload,
+      headers,
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().error).toMatch(/could not read that file/i);
+    // Nothing is persisted for a file we could not read.
+    expect(deps.anonymousSessions.create).not.toHaveBeenCalled();
 
     await app.close();
   });
 
   it('needs no authentication', async () => {
     const app = await appWith(deps);
-    const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
 
     const response = await app.inject({
       method: 'POST',
@@ -157,7 +188,7 @@ describe('public quick analysis', () => {
 
   it('never creates a user-owned record for an anonymous upload', async () => {
     const app = await appWith(deps);
-    const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
 
     await app.inject({ method: 'POST', url: '/api/public/analyze', payload, headers });
 
@@ -186,7 +217,7 @@ describe('public quick analysis', () => {
         ),
       );
     const app = await appWith(deps);
-    const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
 
     const response = await app.inject({
       method: 'POST',
@@ -208,7 +239,7 @@ describe('public quick analysis', () => {
       .fn()
       .mockRejectedValue(new Error('connection string postgres://user:hunter2@db'));
     const app = await appWith(deps);
-    const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
 
     const response = await app.inject({
       method: 'POST',
@@ -229,7 +260,7 @@ describe('public quick analysis', () => {
 
     const statuses: number[] = [];
     for (let attempt = 0; attempt < 7; attempt += 1) {
-      const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+      const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
       const response = await app.inject({
         method: 'POST',
         url: '/api/public/analyze',
@@ -255,7 +286,7 @@ describe('authenticated resume files', () => {
 
   it('rejects an upload with no token', async () => {
     const app = await appWith(deps);
-    const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
 
     const response = await app.inject({ method: 'POST', url: '/api/resumes', payload, headers });
 
@@ -267,7 +298,7 @@ describe('authenticated resume files', () => {
 
   it('stores the file and records it against the caller', async () => {
     const app = await appWith(deps);
-    const { payload, headers } = multipart('cv.pdf', pdfBuffer());
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
 
     const response = await app.inject({
       method: 'POST',
@@ -279,8 +310,8 @@ describe('authenticated resume files', () => {
     expect(response.statusCode).toBe(201);
     expect(deps.storage.upload).toHaveBeenCalledWith(
       AUTHED_USER.id,
-      'cv.pdf',
-      'application/pdf',
+      'cv.txt',
+      'text/plain',
       expect.any(Buffer),
     );
     expect(deps.resumeFiles.create).toHaveBeenCalledWith(

@@ -5,6 +5,8 @@ import {
   validateResumeFile,
 } from '../../services/upload/fileValidation.js';
 import type { ResumeStorage } from '../../services/supabase/storage.js';
+import { extractResumeText } from '../../services/parser/textExtraction.js';
+import { parseResumeText } from '../../services/parser/resumeParser.js';
 import type { AnonymousSessionStore } from './anonymousSessionStore.js';
 import type { ResumeFileRepository } from './resumeFileRepository.js';
 
@@ -76,12 +78,27 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
         return reply.code(400).send({ error: validation.reason });
       }
 
-      // The file itself is not persisted for anonymous users — only its metadata,
-      // which expires with the session.
+      let parsed;
+      try {
+        const text = await extractResumeText(received.buffer, validation.fileType);
+        parsed = parseResumeText(text, {
+          fileName: received.fileName,
+          fileType: validation.fileType,
+        });
+      } catch (error) {
+        request.log.warn({ err: error }, 'Could not parse uploaded resume');
+        return reply.code(422).send({
+          error: 'We could not read that file. It may be scanned, image-only or corrupted.',
+        });
+      }
+
+      // The file itself is not persisted for anonymous users — only the parsed
+      // structure and metadata, which expire with the session.
       const { token, session } = await anonymousSessions.create({
         fileName: received.fileName,
         fileType: validation.fileType,
         fileSize: received.buffer.length,
+        parsedData: parsed.resume,
       });
 
       return reply.code(201).send({
@@ -92,9 +109,11 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
           type: session.fileType,
           size: session.fileSize,
         },
-        // Parsing lands in Phase 4 and scoring in Phase 5.
-        analysis: null,
-        status: 'awaiting-analysis',
+        resume: parsed.resume,
+        detectedSections: parsed.sections.order,
+        // Scoring lands in Phase 5.
+        metrics: null,
+        status: 'parsed',
       });
     },
   );
@@ -116,8 +135,9 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
       return {
         expiresAt: session.expiresAt,
         file: { name: session.fileName, type: session.fileType, size: session.fileSize },
-        analysis: session.parsedData ? { parsed: session.parsedData, metrics: session.metrics } : null,
-        status: session.parsedData ? 'analyzed' : 'awaiting-analysis',
+        resume: session.parsedData,
+        metrics: session.metrics,
+        status: session.parsedData ? 'parsed' : 'awaiting-analysis',
       };
     },
   );
@@ -138,6 +158,23 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
       return reply.code(400).send({ error: validation.reason });
     }
 
+    let parsed;
+    try {
+      const text = await extractResumeText(received.buffer, validation.fileType);
+      parsed = parseResumeText(text, {
+        userId: user.id,
+        fileName: received.fileName,
+        fileType: validation.fileType,
+      });
+    } catch (error) {
+      request.log.warn({ err: error }, 'Could not parse uploaded resume');
+      return reply.code(422).send({
+        error: 'We could not read that file. It may be scanned, image-only or corrupted.',
+      });
+    }
+
+    // Store the original only after parsing succeeds, so a file we cannot read
+    // does not leave an orphaned object behind.
     const { storagePath } = await storage.upload(
       user.id,
       received.fileName,
@@ -153,7 +190,7 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
       storagePath,
     });
 
-    return reply.code(201).send({ resumeFile: record });
+    return reply.code(201).send({ resumeFile: record, resume: parsed.resume });
   });
 
   app.get('/api/resumes', { preHandler: app.requireAuth }, async (request, reply) => {

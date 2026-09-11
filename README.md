@@ -22,6 +22,15 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   persistence, sign-out, protected routes, and a token-verifying API (`GET /api/me`).
   Google Sign-In is deferred until the Google Cloud Console OAuth client is set up —
   see `docs/ARCHITECTURE.md`.
+- **Phase 3 — Resume upload:** anonymous quick-analysis uploads with TTL sessions and
+  rate limiting, plus authenticated uploads persisted to private storage. File type is
+  validated by magic bytes, not the declared MIME type.
+- **Phase 4 — Parsing:** PDF/DOCX/TXT text extraction, section detection and
+  normalization into the canonical `ResumeData` model. Uploads now return structured
+  data; scoring arrives in Phase 5.
+
+**Database setup:** run `supabase/migrations/0001_phase3_uploads.sql` in the Supabase SQL
+editor before starting the API.
 
 See `docs/ARCHITECTURE.md` for the full 19-phase build order.
 

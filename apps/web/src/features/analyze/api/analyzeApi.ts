@@ -2,12 +2,26 @@ import { uploadFile } from '@/lib/upload';
 
 const SESSION_STORAGE_KEY = 'careerlens.quickAnalysis';
 
+/** Mirrors the subset of ResumeData the public result actually shows. */
+export interface ParsedResumePreview {
+  personal: { fullName: string; email?: string; phone?: string; location?: string };
+  summary: string;
+  skills: Array<{ id: string; category: string; skills: string[] }>;
+  experience: Array<{ id: string; title: string; company: string; bullets: unknown[] }>;
+  education: Array<{ id: string; institution: string; degree?: string }>;
+  projects: unknown[];
+  certifications: unknown[];
+  metadata: { wordCount?: number };
+}
+
 export interface QuickAnalysisResult {
   sessionToken: string;
   expiresAt: string;
   file: { name: string; type: 'pdf' | 'docx' | 'txt'; size: number };
-  analysis: unknown | null;
-  status: 'awaiting-analysis' | 'analyzed';
+  resume: ParsedResumePreview;
+  detectedSections: string[];
+  metrics: unknown | null;
+  status: 'awaiting-analysis' | 'parsed';
 }
 
 export function uploadForQuickAnalysis(

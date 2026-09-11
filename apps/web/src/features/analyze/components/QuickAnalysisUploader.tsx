@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileDropzone } from '@/components/FileDropzone';
 import { ErrorState } from '@/components/ErrorState';
+import { ParsedResumeSummary } from '@/features/analyze/components/ParsedResumeSummary';
 import { preCheckFile } from '@/lib/upload';
 import {
   rememberQuickAnalysis,
@@ -87,9 +88,9 @@ export function QuickAnalysisUploader({ onComplete }: QuickAnalysisUploaderProps
             <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
               <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
               <div className="space-y-1">
-                <p className="text-sm font-medium">{phase.result.file.name} uploaded</p>
+                <p className="text-sm font-medium">{phase.result.file.name} read successfully</p>
                 <p className="text-sm text-muted-foreground">
-                  Scoring arrives in the next phase — parsing and the ATS engine are being built.
+                  Your CV was parsed into structured sections. Scoring arrives in the next phase.
                 </p>
                 <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
                   <Clock className="size-3" aria-hidden="true" />
@@ -101,6 +102,11 @@ export function QuickAnalysisUploader({ onComplete }: QuickAnalysisUploaderProps
                 </p>
               </div>
             </div>
+
+            <ParsedResumeSummary
+              resume={phase.result.resume}
+              detectedSections={phase.result.detectedSections}
+            />
 
             <Button variant="outline" size="sm" onClick={reset}>
               <RotateCcw />
