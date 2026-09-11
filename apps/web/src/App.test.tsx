@@ -15,6 +15,8 @@ const { mockAuthApi, mockApi, authListeners } = vi.hoisted(() => ({
   mockApi: {
     getHealth: vi.fn(),
     getMe: vi.fn(),
+    authedFetch: vi.fn(),
+    ApiError: class ApiError extends Error {},
   },
   authListeners: [] as Array<(session: unknown) => void>,
 }));
@@ -129,7 +131,9 @@ describe('App', () => {
       render(<App />);
 
       fireEvent.click(await screen.findByRole('link', { name: /resumes/i }));
-      expect(await screen.findByText(/resume upload isn.t built yet/i)).toBeInTheDocument();
+      expect(
+        await screen.findByRole('heading', { name: /your resumes/i }),
+      ).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('link', { name: /job match/i }));
       expect(await screen.findByText(/job matching isn.t built yet/i)).toBeInTheDocument();

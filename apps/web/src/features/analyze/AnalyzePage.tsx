@@ -1,8 +1,7 @@
-import { Check, Upload } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { LockedPremiumGrid } from '@/features/analyze/components/LockedPremiumGrid';
+import { QuickAnalysisUploader } from '@/features/analyze/components/QuickAnalysisUploader';
 
 const FREE_INCLUDES = [
   'Overall Resume Health / ATS-style score',
@@ -24,27 +23,7 @@ export function AnalyzePage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload your resume</CardTitle>
-          <CardDescription>PDF, DOCX or TXT. Nothing is saved to an account.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-6 py-12 text-center">
-            <Upload className="size-8 text-muted-foreground" aria-hidden="true" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Upload arrives in Phase 3</p>
-              <p className="text-sm text-muted-foreground">
-                The anonymous quick-analysis pipeline is being built next.
-              </p>
-            </div>
-            <Button disabled>
-              <Upload />
-              Choose file
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <QuickAnalysisUploader />
 
       <section aria-labelledby="free-heading" className="space-y-3">
         <h2 id="free-heading" className="text-base font-semibold">

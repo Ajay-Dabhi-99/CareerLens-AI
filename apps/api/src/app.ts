@@ -1,6 +1,8 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
+import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import type { ServerEnv } from '@career-lens-ai/config';
 import {
   createSupabaseAuthVerifier,
@@ -8,11 +10,24 @@ import {
   registerAuthRoutes,
   type AuthVerifier,
 } from './modules/auth/index.js';
+import {
+  createAnonymousSessionStore,
+  createResumeFileRepository,
+  registerResumeRoutes,
+  type AnonymousSessionStore,
+  type ResumeFileRepository,
+} from './modules/resume/index.js';
 import { createSupabaseAdminClient } from './services/supabase/client.js';
+import { createResumeStorage, type ResumeStorage } from './services/supabase/storage.js';
+import { MAX_UPLOAD_BYTES } from './services/upload/fileValidation.js';
+import { PublicError, SetupError, asSetupErrorIfMissingTable } from './modules/errors.js';
 
 export interface BuildAppOptions {
-  /** Override the auth verifier in tests so no live Supabase project is needed. */
+  /** Overrides let tests run without a live Supabase project. */
   authVerifier?: AuthVerifier;
+  anonymousSessions?: AnonymousSessionStore;
+  resumeFiles?: ResumeFileRepository;
+  storage?: ResumeStorage;
 }
 
 export async function buildApp(
@@ -27,9 +42,57 @@ export async function buildApp(
 
   await app.register(cors, { origin: env.CORS_ORIGIN });
   await app.register(sensible);
+  await app.register(multipart, {
+    limits: {
+      fileSize: MAX_UPLOAD_BYTES,
+      files: 1,
+    },
+  });
+  // Global ceiling; public upload routes tighten this further per route.
+  await app.register(rateLimit, {
+    global: false,
+    max: 100,
+    timeWindow: '1 minute',
+  });
+
+  /**
+   * Clients never see raw internal errors. 4xx messages we raised deliberately are
+   * safe to pass through; everything else is logged in full and reported generically,
+   * so database internals and stack details stay server-side.
+   */
+  app.setErrorHandler((error: FastifyError, request, reply) => {
+    const setupError = error instanceof SetupError ? error : asSetupErrorIfMissingTable(error.message);
+
+    if (setupError) {
+      request.log.error(
+        { err: error, hint: setupError.hint },
+        `Setup incomplete: ${setupError.message} ${setupError.hint}`,
+      );
+      return reply.code(503).send({
+        error: 'The service is not fully configured yet. Please try again shortly.',
+      });
+    }
+
+    if (error instanceof PublicError) {
+      return reply.code(error.statusCode).send({ error: error.message });
+    }
+
+    // Fastify attaches statusCode for things like payload-too-large and rate limits.
+    const statusCode = typeof error.statusCode === 'number' ? error.statusCode : 500;
+    if (statusCode >= 400 && statusCode < 500) {
+      return reply.code(statusCode).send({ error: error.message });
+    }
+
+    request.log.error({ err: error }, 'Unhandled error');
+    return reply.code(500).send({ error: 'Something went wrong. Please try again.' });
+  });
+
+  const needsSupabase =
+    !options.authVerifier || !options.anonymousSessions || !options.resumeFiles || !options.storage;
+  const supabase = needsSupabase ? createSupabaseAdminClient(env) : null;
 
   const authVerifier =
-    options.authVerifier ?? createSupabaseAuthVerifier(createSupabaseAdminClient(env));
+    options.authVerifier ?? createSupabaseAuthVerifier(supabase!);
   registerAuth(app, authVerifier);
 
   app.get('/api/health', async () => ({
@@ -39,6 +102,12 @@ export async function buildApp(
   }));
 
   registerAuthRoutes(app);
+
+  registerResumeRoutes(app, {
+    anonymousSessions: options.anonymousSessions ?? createAnonymousSessionStore(supabase!),
+    resumeFiles: options.resumeFiles ?? createResumeFileRepository(supabase!),
+    storage: options.storage ?? createResumeStorage(supabase!),
+  });
 
   return app;
 }
