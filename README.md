@@ -12,9 +12,11 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
 
 ## Status
 
-**Phase 0 — Foundation.** Monorepo, React app, Fastify API, shared types/validation
-packages, lint, formatting, tests and environment config are in place. See
-`docs/ARCHITECTURE.md` for the full 19-phase build order.
+**Phase 1 — UI System.** Phase 0 (monorepo, React app, Fastify API, shared
+types/validation packages, lint, tests, environment config) is done. Phase 1 adds
+Tailwind CSS v4 + shadcn-style design tokens, an app shell (responsive sidebar + header),
+a dashboard shell, and reusable loading/error/empty state components — no backend
+dependency required. See `docs/ARCHITECTURE.md` for the full 19-phase build order.
 
 ## Getting started
 

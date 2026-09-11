@@ -1,0 +1,1 @@
+export { JobMatchPage } from './JobMatchPage';

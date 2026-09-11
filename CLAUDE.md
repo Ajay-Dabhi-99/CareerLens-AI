@@ -34,8 +34,9 @@ requirements that conflict with it.
 
 ## Stack
 
-- Frontend: React + TypeScript + Vite, Tailwind + shadcn/ui (from Phase 1), React Router,
-  TanStack Query, Zustand, React Hook Form + Zod, TipTap, Recharts.
+- Frontend: React + TypeScript + Vite, Tailwind CSS v4 + shadcn-style components (in place
+  since Phase 1), React Router (in place), TanStack Query, Zustand, React Hook Form + Zod,
+  TipTap, Recharts (added when their feature phase starts).
 - Backend: Node.js + TypeScript + Fastify.
 - Database/Auth/Storage: Supabase (PostgreSQL, Auth, Storage).
 - AI: Gemini API (Google AI Studio) via a backend `AIProvider` abstraction.
