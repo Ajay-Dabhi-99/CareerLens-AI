@@ -11,8 +11,11 @@ import { cn } from '@/lib/utils';
 import type { FullScore } from '@/features/resume/api/resumeApi';
 import {
   getEditorResume,
+  listAiChanges,
+  revertAiChange,
   saveDraft,
   StaleDraftError,
+  type AiChange,
   type EditorSnapshot,
   type ResumeData,
 } from '@/features/editor/api/editorApi';
@@ -20,6 +23,7 @@ import { useAutosave } from '@/features/editor/hooks/useAutosave';
 import { useUndoable } from '@/features/editor/hooks/useUndoable';
 import { useRewriteController } from '@/features/editor/hooks/useRewrite';
 import { SaveIndicator } from '@/features/editor/components/SaveIndicator';
+import { AiChangeList } from '@/features/editor/components/AiChangeList';
 import { Field } from '@/features/editor/components/EntryCard';
 import {
   EducationSection,
@@ -60,6 +64,9 @@ export function EditorPage() {
   const [score, setScore] = useState<FullScore | null>(null);
   const [active, setActive] = useState<string>('personal');
   const [confirmingRevert, setConfirmingRevert] = useState(false);
+  const [changes, setChanges] = useState<AiChange[]>([]);
+  const [revertingId, setRevertingId] = useState<string | null>(null);
+  const [revertError, setRevertError] = useState<string | null>(null);
 
   const {
     present: data,
@@ -72,9 +79,18 @@ export function EditorPage() {
     canRedo,
   } = useUndoable<ResumeData | null>(null);
 
+  /** Reading the history costs nothing, so it is refreshed rather than guessed. */
+  const loadChanges = useCallback(() => {
+    if (!id) return;
+    listAiChanges(id)
+      .then(setChanges)
+      // A history we cannot read is not worth interrupting the editing for.
+      .catch(() => setChanges([]));
+  }, [id]);
+
   // One rewrite at a time anywhere on the page, so only one AI call can ever
   // be in flight against a small free-tier quota.
-  const rewrite = useRewriteController(id);
+  const rewrite = useRewriteController(id, loadChanges);
 
   /**
    * The revision the next save will be based on. Kept in a ref rather than
@@ -95,6 +111,7 @@ export function EditorPage() {
         reset(snapshot.draft.data);
         setScore(snapshot.score);
         setState({ kind: 'loaded', snapshot });
+        loadChanges();
       })
       .catch((error: unknown) =>
         setState({
@@ -102,7 +119,7 @@ export function EditorPage() {
           message: error instanceof Error ? error.message : 'Could not open that resume.',
         }),
       );
-  }, [id, reset]);
+  }, [id, reset, loadChanges]);
 
   useEffect(load, [load]);
 
@@ -157,6 +174,39 @@ export function EditorPage() {
     schedule(original);
     setConfirmingRevert(false);
   }, [state, push, schedule]);
+
+  /**
+   * Puts one AI change back.
+   *
+   * Done on the server, which re-reads the draft and saves against the revision
+   * it actually holds — doing it here would race with autosave. The restored
+   * draft comes back and replaces what is on screen, and goes onto the undo
+   * stack so even putting something back is reversible.
+   */
+  const handleRevertChange = useCallback(
+    async (changeId: string) => {
+      if (!id) return;
+      setRevertingId(changeId);
+      setRevertError(null);
+
+      try {
+        const result = await revertAiChange(id, changeId);
+        revision.current = result.draft.revision;
+        push(result.draft.data, { coalesce: false });
+        setScore(result.score);
+        setChanges((current) =>
+          current.map((change) => (change.id === changeId ? result.change : change)),
+        );
+      } catch (error) {
+        setRevertError(
+          error instanceof Error ? error.message : 'That change could not be put back.',
+        );
+      } finally {
+        setRevertingId(null);
+      }
+    },
+    [id, push],
+  );
 
   /** The shortcuts people try without thinking, so they should work. */
   useEffect(() => {
@@ -263,6 +313,13 @@ export function EditorPage() {
           </Button>
         </div>
       </div>
+
+      <AiChangeList
+        changes={changes}
+        onRevert={(changeId) => void handleRevertChange(changeId)}
+        revertingId={revertingId}
+        error={revertError}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[12rem_1fr_15rem]">
         <nav aria-label="Resume sections" className="lg:sticky lg:top-4 lg:self-start">

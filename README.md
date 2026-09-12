@@ -47,6 +47,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   and skills grouping. Options are shown for a choice and never applied automatically;
   accepted AI text is marked unverified until the user confirms it.
 
+- **Phase 10 — Diff and approval:** every suggestion is shown as a word-level diff with
+  Accept, Edit and Reject. Accepted changes are recorded so any of them can be put back
+  later, including after closing the page.
+
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
 it PostgREST keeps serving a cached schema and the API reports the new tables as missing.

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RewritePanel, type RewriteOption } from './RewritePanel';
 
 function options(): RewriteOption[] {
@@ -19,6 +19,23 @@ function options(): RewriteOption[] {
 
 const CURRENT = 'Responsible for the billing service.';
 
+function renderPanel(overrides: Partial<Parameters<typeof RewritePanel>[0]> = {}) {
+  const onAccept = vi.fn();
+  const onDismiss = vi.fn();
+
+  render(
+    <RewritePanel
+      state={{ kind: 'ready', options: options() }}
+      currentText={CURRENT}
+      onAccept={onAccept}
+      onDismiss={onDismiss}
+      {...overrides}
+    />,
+  );
+
+  return { onAccept, onDismiss };
+}
+
 describe('RewritePanel', () => {
   it('shows nothing at all until a rewrite is asked for', () => {
     const { container } = render(
@@ -34,106 +51,101 @@ describe('RewritePanel', () => {
   });
 
   it('applies nothing on its own — every option needs a click', () => {
-    const onAccept = vi.fn();
-    render(
-      <RewritePanel
-        state={{ kind: 'ready', options: options() }}
-        currentText={CURRENT}
-        onAccept={onAccept}
-        onDismiss={vi.fn()}
-      />,
-    );
+    const { onAccept } = renderPanel();
 
     // Rendering suggestions must never be the same as taking them.
     expect(onAccept).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /use this/i })[0]!);
-    expect(onAccept).toHaveBeenCalledWith('Owned the billing service end to end.');
+    fireEvent.click(screen.getAllByRole('button', { name: /^accept$/i })[0]!);
+    expect(onAccept).toHaveBeenCalledWith({
+      text: 'Owned the billing service end to end.',
+      edited: false,
+    });
   });
 
-  it('keeps the current text on screen so the choice is a comparison', () => {
-    render(
-      <RewritePanel
-        state={{ kind: 'ready', options: options() }}
-        currentText={CURRENT}
-        onAccept={vi.fn()}
-        onDismiss={vi.fn()}
-      />,
-    );
+  it('shows a diff so the change is visible word by word', () => {
+    renderPanel();
 
-    expect(screen.getByText(CURRENT)).toBeVisible();
+    const diffs = screen.getAllByTestId('diff-view');
+    expect(diffs).toHaveLength(2);
+    // Both sides are present, so the user compares rather than guesses.
+    expect(within(diffs[0]!).getByText('Now')).toBeVisible();
+    expect(within(diffs[0]!).getByText('Suggested')).toBeVisible();
+  });
+
+  it('lets the user edit a suggestion before taking it', () => {
+    const { onAccept } = renderPanel();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /edit first/i })[0]!);
+
+    const box = screen.getByLabelText(/edit the suggestion before using it/i);
+    expect(box).toHaveValue('Owned the billing service end to end.');
+
+    fireEvent.change(box, { target: { value: 'Owned billing, cutting failures by 40%.' } });
+    fireEvent.click(screen.getByRole('button', { name: /use my version/i }));
+
+    // Recorded as edited, so the history can tell "took the AI's words" from
+    // "used them as a starting point".
+    expect(onAccept).toHaveBeenCalledWith({
+      text: 'Owned billing, cutting failures by 40%.',
+      edited: true,
+    });
+  });
+
+  it('will not accept an edit the user has emptied', () => {
+    renderPanel();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /edit first/i })[0]!);
+    fireEvent.change(screen.getByLabelText(/edit the suggestion before using it/i), {
+      target: { value: '   ' },
+    });
+
+    expect(screen.getByRole('button', { name: /use my version/i })).toBeDisabled();
+  });
+
+  it('can go back from editing to the original suggestion', () => {
+    renderPanel();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /edit first/i })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: /back to the suggestion/i }));
+
+    expect(screen.queryByLabelText(/edit the suggestion/i)).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('diff-view')).toHaveLength(2);
   });
 
   it('explains every option rather than offering bare text', () => {
-    render(
-      <RewritePanel
-        state={{ kind: 'ready', options: options() }}
-        currentText={CURRENT}
-        onAccept={vi.fn()}
-        onDismiss={vi.fn()}
-      />,
-    );
+    renderPanel();
 
     expect(screen.getByText(/replaces "responsible for"/i)).toBeVisible();
     expect(screen.getByText(/^Stronger with a number/i)).toBeVisible();
   });
 
   it('warns on an option that needs a fact the resume does not have', () => {
-    render(
-      <RewritePanel
-        state={{ kind: 'ready', options: options() }}
-        currentText={CURRENT}
-        onAccept={vi.fn()}
-        onDismiss={vi.fn()}
-      />,
-    );
+    renderPanel();
 
-    // The placeholder must not be pasted onto a resume unread.
     expect(screen.getByText(/replace the placeholder with a real figure/i)).toBeVisible();
   });
 
-  it('offers the option anyway rather than hiding it', () => {
-    render(
-      <RewritePanel
-        state={{ kind: 'ready', options: options() }}
-        currentText={CURRENT}
-        onAccept={vi.fn()}
-        onDismiss={vi.fn()}
-      />,
-    );
+  it('offers the flagged option anyway rather than hiding it', () => {
+    renderPanel();
 
     // Flagged, not withheld: the user may well have the number to hand.
-    expect(screen.getAllByRole('button', { name: /use this/i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /^accept$/i })).toHaveLength(2);
+  });
+
+  it('rejects everything without taking anything', () => {
+    const { onAccept, onDismiss } = renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: /reject all/i }));
+    expect(onDismiss).toHaveBeenCalled();
+    expect(onAccept).not.toHaveBeenCalled();
   });
 
   it('says the work is safe and reversible', () => {
-    render(
-      <RewritePanel
-        state={{ kind: 'ready', options: options() }}
-        currentText={CURRENT}
-        onAccept={vi.fn()}
-        onDismiss={vi.fn()}
-      />,
-    );
+    renderPanel();
 
     expect(screen.getByText(/nothing changes until you choose/i)).toBeVisible();
-  });
-
-  it('can be dismissed without taking anything', () => {
-    const onAccept = vi.fn();
-    const onDismiss = vi.fn();
-    render(
-      <RewritePanel
-        state={{ kind: 'ready', options: options() }}
-        currentText={CURRENT}
-        onAccept={onAccept}
-        onDismiss={onDismiss}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /dismiss suggestions/i }));
-    expect(onDismiss).toHaveBeenCalled();
-    expect(onAccept).not.toHaveBeenCalled();
+    expect(screen.getByText(/can be put back later/i)).toBeVisible();
   });
 
   it('reports a failure without suggesting the resume was harmed', () => {

@@ -287,6 +287,37 @@ call is ever in flight. Identical text is answered from an in-memory cache (10 m
 process-wide map in readable form) so asking twice about something unchanged costs once. The
 per-user limit is 20 an hour.
 
+## Diff and approval (Phase 10)
+
+The phase's Definition of Done is "every AI change is reversible". Undo in the editor lives
+in browser memory, so reloading the page made an accepted rewrite permanent. `ai_changes`
+records one row per accepted suggestion — the text as it was, as it became, and whether the
+user edited it first — so the guarantee holds tomorrow as well as this afternoon.
+
+**Three ways out of a suggestion, and they are not the same.** Accept takes it, Edit opens it
+as a starting point, Reject leaves it. The middle one matters most: a suggestion is usually
+nearly right, and without it the choice collapses into "accept wording you half-agree with"
+or "lose it entirely". The history records which, so "took the AI's words" stays
+distinguishable from "used them as a starting point".
+
+**The diff is word-level and written here rather than pulled in.** It is one small algorithm
+on short strings; a dependency would be more code to audit than the thirty lines it replaces.
+Words, not characters: a character diff of a rewritten sentence produces fragments
+highlighted inside words, which is harder to read than no diff at all. Tests assert both
+sides reconstruct exactly, because a diff that cannot rebuild its own input is lying about
+one of them.
+
+**Reverting is refused rather than guessed at.** It matches the exact text the user accepted.
+If they have since rewritten that line themselves, the text is not found and nothing is
+touched — overwriting someone's later work in the name of undoing an earlier change is the
+opposite of what they asked for. The revert happens on the server so the read, the edit and
+the save are one operation against the revision the draft actually holds; doing it in the
+browser would race with autosave.
+
+**Recording is separate from saving.** The accepted text reaches the resume through the
+ordinary autosave, so a failure to write history costs the ability to revert that one change
+from the list and never the edit itself.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

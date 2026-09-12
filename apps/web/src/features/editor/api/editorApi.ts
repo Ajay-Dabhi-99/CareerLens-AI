@@ -188,3 +188,51 @@ export async function requestRewrite(
 export async function deleteEditorResume(id: string): Promise<void> {
   await authedFetch(`/api/editor/resumes/${id}`, { method: 'DELETE' });
 }
+
+export interface AiChange {
+  id: string;
+  resumeId: string;
+  target: RewriteTarget;
+  beforeText: string;
+  afterText: string;
+  edited: boolean;
+  createdAt: string;
+  revertedAt: string | null;
+}
+
+/**
+ * Records an accepted suggestion so it can be put back later.
+ *
+ * Separate from the draft save on purpose: the text reaches the resume through
+ * the ordinary autosave, so a failure here costs the ability to revert that one
+ * change from history and never the edit itself.
+ */
+export async function recordAiChange(
+  resumeId: string,
+  change: { target: RewriteTarget; beforeText: string; afterText: string; edited: boolean },
+): Promise<AiChange> {
+  const response = await authedFetch(`/api/editor/resumes/${resumeId}/changes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(change),
+  });
+  const body = (await response.json()) as { change: AiChange };
+  return body.change;
+}
+
+export async function listAiChanges(resumeId: string): Promise<AiChange[]> {
+  const response = await authedFetch(`/api/editor/resumes/${resumeId}/changes`);
+  const body = (await response.json()) as { changes: AiChange[] };
+  return body.changes;
+}
+
+export async function revertAiChange(
+  resumeId: string,
+  changeId: string,
+): Promise<{ change: AiChange; draft: ResumeVersion; score: FullScore }> {
+  const response = await authedFetch(
+    `/api/editor/resumes/${resumeId}/changes/${changeId}/revert`,
+    { method: 'POST' },
+  );
+  return (await response.json()) as { change: AiChange; draft: ResumeVersion; score: FullScore };
+}

@@ -1,6 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { requestRewrite, type RewriteTarget } from '@/features/editor/api/editorApi';
-import type { RewriteState } from '@/features/editor/components/RewritePanel';
+import {
+  recordAiChange,
+  requestRewrite,
+  type RewriteTarget,
+} from '@/features/editor/api/editorApi';
+import type { AcceptedRewrite, RewriteState } from '@/features/editor/components/RewritePanel';
 
 /**
  * Runs one rewrite at a time, anywhere in the editor.
@@ -12,13 +16,16 @@ import type { RewriteState } from '@/features/editor/components/RewritePanel';
  * The panel never applies anything itself: `start` is handed the function that
  * would apply a choice, and it is only ever called from `accept`.
  */
-export function useRewriteController(resumeId: string | undefined) {
+export function useRewriteController(
+  resumeId: string | undefined,
+  onRecorded?: () => void,
+) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [state, setState] = useState<RewriteState>({ kind: 'idle' });
   const [currentText, setCurrentText] = useState('');
 
   const apply = useRef<((text: string) => void) | null>(null);
-  const lastRequest = useRef<{ target: RewriteTarget; text: string } | null>(null);
+  const pending = useRef<{ target: RewriteTarget; text: string } | null>(null);
 
   const run = useCallback(
     async (target: RewriteTarget, text: string) => {
@@ -31,8 +38,7 @@ export function useRewriteController(resumeId: string | undefined) {
       } catch (error) {
         setState({
           kind: 'error',
-          message:
-            error instanceof Error ? error.message : 'That rewrite could not be generated.',
+          message: error instanceof Error ? error.message : 'That rewrite could not be generated.',
         });
       }
     },
@@ -52,7 +58,7 @@ export function useRewriteController(resumeId: string | undefined) {
       }
 
       apply.current = applyChoice;
-      lastRequest.current = { target, text };
+      pending.current = { target, text };
       setActiveKey(key);
       setCurrentText(text);
       void run(target, text);
@@ -60,12 +66,35 @@ export function useRewriteController(resumeId: string | undefined) {
     [run],
   );
 
-  const accept = useCallback((text: string) => {
-    apply.current?.(text);
-    apply.current = null;
-    setActiveKey(null);
-    setState({ kind: 'idle' });
-  }, []);
+  const accept = useCallback(
+    (accepted: AcceptedRewrite) => {
+      const request = pending.current;
+
+      // The edit lands first and unconditionally. Recording it is history, and
+      // history failing must never cost the user the change they just chose.
+      apply.current?.(accepted.text);
+      apply.current = null;
+      setActiveKey(null);
+      setState({ kind: 'idle' });
+
+      if (!resumeId || !request) return;
+
+      void recordAiChange(resumeId, {
+        target: request.target,
+        beforeText: request.text,
+        afterText: accepted.text,
+        edited: accepted.edited,
+      })
+        .then(() => onRecorded?.())
+        .catch(() => {
+          // Losing the history entry means this one change cannot be reverted
+          // from the list later. In-session undo still covers it, and the edit
+          // itself is already safe, so there is nothing worth interrupting the
+          // user for.
+        });
+    },
+    [resumeId, onRecorded],
+  );
 
   const dismiss = useCallback(() => {
     apply.current = null;
@@ -74,8 +103,8 @@ export function useRewriteController(resumeId: string | undefined) {
   }, []);
 
   const retry = useCallback(() => {
-    const previous = lastRequest.current;
-    if (previous) void run(previous.target, previous.text);
+    const request = pending.current;
+    if (request) void run(request.target, request.text);
   }, [run]);
 
   return { activeKey, state, currentText, start, accept, dismiss, retry };

@@ -1,6 +1,8 @@
-import { AlertTriangle, Check, Sparkles, X } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Check, Pencil, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DiffView } from '@/features/editor/components/DiffView';
 
 export interface RewriteOption {
   text: string;
@@ -14,12 +16,108 @@ export type RewriteState =
   | { kind: 'ready'; options: RewriteOption[] }
   | { kind: 'error'; message: string };
 
+/** What the user did with a suggestion, so the history can record it honestly. */
+export interface AcceptedRewrite {
+  text: string;
+  edited: boolean;
+}
+
+/**
+ * One suggestion, shown as a diff against what the user has now.
+ *
+ * Three ways out, and they are not the same: take it, take it as a starting
+ * point, or leave it. The middle one matters most — a suggestion is usually
+ * nearly right, and without Edit the choice collapses into "accept wording you
+ * half-agree with" or "lose it entirely".
+ */
+function OptionCard({
+  option,
+  currentText,
+  onAccept,
+}: {
+  option: RewriteOption;
+  currentText: string;
+  onAccept: (accepted: AcceptedRewrite) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(option.text);
+
+  return (
+    <li
+      className={cn(
+        'space-y-2.5 rounded-lg border bg-card p-3',
+        option.requiresVerification ? 'border-warning/40' : 'border-border',
+      )}
+    >
+      {editing ? (
+        <div className="space-y-2">
+          <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Your version
+          </label>
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={3}
+            aria-label="Edit the suggestion before using it"
+            className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+      ) : (
+        <DiffView before={currentText} after={option.text} />
+      )}
+
+      <p className="text-xs text-muted-foreground">{option.explanation}</p>
+
+      {option.requiresVerification ? (
+        <p className="flex items-start gap-1.5 rounded-md bg-warning/10 px-2 py-1.5 text-xs text-warning">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          Needs a detail your resume does not contain. Replace the placeholder with a real figure
+          before using this, or pick the other option.
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        {editing ? (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!draft.trim()}
+              onClick={() => onAccept({ text: draft.trim(), edited: true })}
+            >
+              <Check />
+              Use my version
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              Back to the suggestion
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onAccept({ text: option.text, edited: false })}
+            >
+              <Check />
+              Accept
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+              <Pencil />
+              Edit first
+            </Button>
+          </>
+        )}
+      </div>
+    </li>
+  );
+}
+
 /**
  * Rewrite options, shown for a decision rather than applied.
  *
  * Nothing here changes the resume on its own: each option needs a deliberate
- * click, and the current text stays on screen next to it so the choice is
- * between two things the user can actually compare.
+ * click, and the diff shows exactly which words would move.
  *
  * An option flagged as needing verification is marked, not hidden. The model is
  * forbidden from inventing facts, so when a stronger line would need a number
@@ -35,7 +133,7 @@ export function RewritePanel({
 }: {
   state: RewriteState;
   currentText: string;
-  onAccept: (text: string) => void;
+  onAccept: (accepted: AcceptedRewrite) => void;
   onDismiss: () => void;
   onRetry?: () => void;
 }) {
@@ -82,47 +180,30 @@ export function RewritePanel({
           <Sparkles className="size-4 text-primary" aria-hidden="true" />
           Suggested rewrites
         </p>
-        <Button variant="ghost" size="icon" aria-label="Dismiss suggestions" onClick={onDismiss}>
+        <Button variant="ghost" size="icon" aria-label="Reject these suggestions" onClick={onDismiss}>
           <X />
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-background p-2.5">
-        <p className="mb-1 text-xs font-medium text-muted-foreground">What you have now</p>
-        <p className="text-sm">{currentText}</p>
-      </div>
-
       <ul className="space-y-2">
         {state.options.map((option, index) => (
-          <li
+          <OptionCard
             key={`${index}-${option.text.slice(0, 24)}`}
-            className={cn(
-              'space-y-2 rounded-lg border bg-card p-3',
-              option.requiresVerification ? 'border-warning/40' : 'border-border',
-            )}
-          >
-            <p className="text-sm">{option.text}</p>
-            <p className="text-xs text-muted-foreground">{option.explanation}</p>
-
-            {option.requiresVerification ? (
-              <p className="flex items-start gap-1.5 rounded-md bg-warning/10 px-2 py-1.5 text-xs text-warning">
-                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                Needs a detail your resume does not contain. Replace the placeholder with a real
-                figure before using this, or pick the other option.
-              </p>
-            ) : null}
-
-            <Button size="sm" variant="outline" onClick={() => onAccept(option.text)}>
-              <Check />
-              Use this
-            </Button>
-          </li>
+            option={option}
+            currentText={currentText}
+            onAccept={onAccept}
+          />
         ))}
       </ul>
 
-      <p className="text-xs text-muted-foreground">
-        Nothing changes until you choose. You can undo afterwards.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Nothing changes until you choose, and anything you accept can be put back later.
+        </p>
+        <Button size="sm" variant="ghost" onClick={onDismiss}>
+          Reject all
+        </Button>
+      </div>
     </div>
   );
 }
