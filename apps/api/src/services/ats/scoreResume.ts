@@ -25,6 +25,28 @@ export interface ScoreResumeOptions {
   resumeVersionId?: string;
 }
 
+/** Highest total a resume showing keyword-stuffing signals can reach. */
+const STUFFING_CEILING = 55;
+
+/**
+ * Caps a resume that games keyword matching.
+ *
+ * Stuffing is cross-cutting: padding a skills list and repeating one term were
+ * each penalised inside their own category, but the remaining categories could
+ * still carry the total to a respectable number. A resume built to trick a
+ * filter should not read as a good resume however tidy the rest of it is.
+ */
+function applyStuffingCeiling(weighted: number, categories: AtsCategoryResult[]): number {
+  const STUFFING_SIGNALS = ['keywords.repetition', 'skills.too-many', 'skills.repetitive'];
+  const signals = categories
+    .flatMap((category) => category.findings)
+    .filter((f) => STUFFING_SIGNALS.includes(f.id)).length;
+
+  // One signal alone is weak evidence; both together is a pattern.
+  const capped = signals >= 2 ? Math.min(weighted, STUFFING_CEILING) : weighted;
+  return Math.round(capped);
+}
+
 /**
  * Runs every category analyzer and combines them into the Resume Health score.
  *
@@ -50,13 +72,13 @@ export function scoreResume(resume: Resume, options: ScoreResumeOptions = {}): A
   const assessed = categories.filter((category) => !category.notAssessed);
   const totalWeight = assessed.reduce((total, category) => total + category.weight, 0);
 
-  const finalScore =
+  const weighted =
     totalWeight > 0
-      ? Math.round(
-          assessed.reduce((total, category) => total + category.score * category.weight, 0) /
-            totalWeight,
-        )
+      ? assessed.reduce((total, category) => total + category.score * category.weight, 0) /
+        totalWeight
       : 0;
+
+  const finalScore = applyStuffingCeiling(weighted, categories);
 
   return {
     id: randomUUID(),

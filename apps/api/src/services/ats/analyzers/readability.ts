@@ -2,64 +2,99 @@ import type { AtsCategoryResult, Resume } from '@career-lens-ai/types';
 import { ATS_CATEGORY_WEIGHTS } from '@career-lens-ai/types';
 import { allBullets, clampScore, finding, wordCount } from '../analyzerKit.js';
 
-const LONG_BULLET_WORDS = 32;
-const SHORT_BULLET_WORDS = 4;
-const LONG_SUMMARY_WORDS = 120;
-
 const FIRST_PERSON = /\b(i|me|my|mine|myself)\b/i;
 
+const LONG_SUMMARY_WORDS = 120;
+const SHORT_SUMMARY_WORDS = 10;
+
 /**
- * Readability: bullet length, summary length, and person.
+ * How well a single bullet reads, by length.
  *
- * Resume convention is implied first person ("Led the migration"), not explicit
- * ("I led the migration"), so explicit first-person pronouns are flagged.
+ * Under five words cannot carry an achievement ("Helped with the website");
+ * eight to thirty is the band that states what was done and what changed;
+ * beyond forty it stops being skimmable.
+ */
+function bulletReadability(words: number): number {
+  if (words < 5) return 0;
+  if (words < 8) return 40;
+  if (words <= 30) return 100;
+  if (words <= 40) return 60;
+  return 30;
+}
+
+function summaryReadability(words: number): number {
+  if (words === 0) return 0;
+  if (words < SHORT_SUMMARY_WORDS) return 50;
+  if (words <= LONG_SUMMARY_WORDS) return 100;
+  return 60;
+}
+
+/**
+ * Readability: whether the writing is substantial enough to be read.
+ *
+ * Scores the quality of what is there rather than deducting for defects. A
+ * resume of four-word bullets has no detectable "problem" to deduct for, yet
+ * communicates nothing, and previously scored full marks.
  */
 export function analyzeReadability(resume: Resume): AtsCategoryResult {
   const findings = [];
-  let score = 100;
-
   const bullets = allBullets(resume);
+  const summaryWords = wordCount(resume.summary);
 
-  if (bullets.length === 0 && resume.summary.trim() === '') {
+  if (bullets.length === 0 && summaryWords === 0) {
     return {
       category: 'readability',
       weight: ATS_CATEGORY_WEIGHTS.readability,
       score: 0,
+      notAssessed: true,
       findings: [
-        finding('readability.no-prose', 'critical', 'There is no written content to assess.'),
+        finding(
+          'readability.no-prose',
+          'warning',
+          'There was no written content to assess, so readability could not be scored.',
+        ),
       ],
     };
   }
 
-  if (bullets.length > 0) {
-    const lengths = bullets.map((bullet) => wordCount(bullet.text));
-    const longBullets = lengths.filter((length) => length > LONG_BULLET_WORDS).length;
-    const shortBullets = lengths.filter((length) => length < SHORT_BULLET_WORDS).length;
-    const average = Math.round(lengths.reduce((sum, length) => sum + length, 0) / lengths.length);
+  const lengths = bullets.map((bullet) => wordCount(bullet.text));
+  const bulletScore =
+    lengths.length > 0
+      ? lengths.reduce((total, words) => total + bulletReadability(words), 0) / lengths.length
+      : 0;
 
-    if (longBullets > 0) {
-      score -= Math.min(25, longBullets * 8);
-      findings.push(
-        finding(
-          'readability.long-bullets',
-          'warning',
-          `${longBullets} bullet${longBullets === 1 ? ' runs' : 's run'} past ${LONG_BULLET_WORDS} words. Long bullets get skimmed past.`,
-        ),
-      );
-    }
+  // With no bullets at all, the summary carries the category.
+  const score =
+    lengths.length > 0
+      ? bulletScore * 0.6 + summaryReadability(summaryWords) * 0.4
+      : summaryReadability(summaryWords);
 
-    if (shortBullets > 0) {
-      score -= Math.min(15, shortBullets * 5);
+  if (lengths.length > 0) {
+    const average = Math.round(lengths.reduce((sum, words) => sum + words, 0) / lengths.length);
+    const tooShort = lengths.filter((words) => words < 5).length;
+    const tooLong = lengths.filter((words) => words > 40).length;
+
+    if (tooShort > 0) {
       findings.push(
         finding(
           'readability.short-bullets',
           'warning',
-          `${shortBullets} bullet${shortBullets === 1 ? ' is' : 's are'} too short to say anything meaningful.`,
+          `${tooShort} bullet${tooShort === 1 ? ' is' : 's are'} under five words — too short to say what you did or what changed.`,
         ),
       );
     }
 
-    if (longBullets === 0 && shortBullets === 0) {
+    if (tooLong > 0) {
+      findings.push(
+        finding(
+          'readability.long-bullets',
+          'warning',
+          `${tooLong} bullet${tooLong === 1 ? ' runs' : 's run'} past 40 words and will be skimmed past.`,
+        ),
+      );
+    }
+
+    if (tooShort === 0 && tooLong === 0) {
       findings.push(
         finding(
           'readability.good-bullet-length',
@@ -70,11 +105,36 @@ export function analyzeReadability(resume: Resume): AtsCategoryResult {
     }
   }
 
-  const firstPersonBullets = bullets.filter((bullet) => FIRST_PERSON.test(bullet.text)).length;
-  const firstPersonSummary = FIRST_PERSON.test(resume.summary);
+  if (summaryWords === 0) {
+    findings.push(
+      finding(
+        'readability.no-summary',
+        'warning',
+        'There is no summary. Two or three lines at the top frame everything below them.',
+      ),
+    );
+  } else if (summaryWords > LONG_SUMMARY_WORDS) {
+    findings.push(
+      finding(
+        'readability.long-summary',
+        'warning',
+        `The summary is ${summaryWords} words. Three or four tight sentences land better.`,
+      ),
+    );
+  } else {
+    findings.push(
+      finding(
+        'readability.concise-summary',
+        'good',
+        `The summary is a readable ${summaryWords} words.`,
+      ),
+    );
+  }
 
-  if (firstPersonBullets > 0 || firstPersonSummary) {
-    score -= 15;
+  const usesFirstPerson =
+    bullets.some((bullet) => FIRST_PERSON.test(bullet.text)) || FIRST_PERSON.test(resume.summary);
+
+  if (usesFirstPerson) {
     findings.push(
       finding(
         'readability.first-person',
@@ -84,26 +144,10 @@ export function analyzeReadability(resume: Resume): AtsCategoryResult {
     );
   }
 
-  const summaryWords = wordCount(resume.summary);
-  if (summaryWords > LONG_SUMMARY_WORDS) {
-    score -= 15;
-    findings.push(
-      finding(
-        'readability.long-summary',
-        'warning',
-        `The summary is ${summaryWords} words. Three or four tight sentences land better.`,
-      ),
-    );
-  } else if (summaryWords > 0) {
-    findings.push(
-      finding('readability.concise-summary', 'good', `The summary is a readable ${summaryWords} words.`),
-    );
-  }
-
   return {
     category: 'readability',
     weight: ATS_CATEGORY_WEIGHTS.readability,
-    score: clampScore(score),
+    score: clampScore(usesFirstPerson ? score - 15 : score),
     findings,
   };
 }

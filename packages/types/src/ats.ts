@@ -59,10 +59,13 @@ export const ATS_CATEGORY_WEIGHTS: Record<AtsCategory, number> = {
   atsCompatibility: 0.15,
   skillsQuality: 0.15,
   experienceStrength: 0.15,
-  impactAchievements: 0.15,
+  // Quantified achievements are the strongest measurable predictor of callbacks,
+  // so impact carries more than the presentation categories below it.
+  impactAchievements: 0.2,
   keywordQuality: 0.1,
   readability: 0.1,
-  formatting: 0.1,
+  // Consistency matters, but far less than what the bullets actually say.
+  formatting: 0.05,
   professionalismCompleteness: 0.1,
 };
 

@@ -40,12 +40,15 @@ export function analyzeSkills(resume: Resume): AtsCategoryResult {
       ),
     );
   } else if (skills.length > SUSPICIOUSLY_MANY_SKILLS) {
-    score -= 15;
+    // Scales with the excess: a list this long is padding, and a flat penalty
+    // let a resume claiming forty-plus tools still score respectably.
+    const excess = skills.length - SUSPICIOUSLY_MANY_SKILLS;
+    score -= Math.min(45, 15 + excess * 2);
     findings.push(
       finding(
         'skills.too-many',
         'warning',
-        `${skills.length} skills listed. Very long lists dilute the ones that matter.`,
+        `${skills.length} skills listed. A list this long reads as padding and dilutes the ones that matter.`,
       ),
     );
   } else {
@@ -64,6 +67,37 @@ export function analyzeSkills(resume: Resume): AtsCategoryResult {
         'skills.duplicates',
         'warning',
         `${duplicates} duplicate skill${duplicates === 1 ? '' : 's'} found.`,
+      ),
+    );
+  }
+
+  /*
+   * Padding by variation: "React, React Native, React Router, React Query"
+   * inflates a skills list without adding evidence of a distinct competence.
+   *
+   * This is checked here rather than in the keyword analyzer because that one
+   * deliberately excludes the skills list — it measures terminology in the
+   * prose, which is exactly where a stuffed resume has nothing.
+   */
+  const rootCounts = new Map<string, number>();
+  for (const skill of normalized) {
+    const root = skill.split(/[\s/]/)[0] ?? '';
+    if (root.length < 3) continue;
+    rootCounts.set(root, (rootCounts.get(root) ?? 0) + 1);
+  }
+
+  const [repeatedRoot, repeatCount] = [...rootCounts.entries()].reduce<[string, number]>(
+    (best, entry) => (entry[1] > best[1] ? entry : best),
+    ['', 0],
+  );
+
+  if (repeatCount >= 4) {
+    score -= Math.min(30, repeatCount * 6);
+    findings.push(
+      finding(
+        'skills.repetitive',
+        'warning',
+        `${repeatCount} listed skills are variations of "${repeatedRoot}". Naming the ecosystem once is stronger than listing every package in it.`,
       ),
     );
   }

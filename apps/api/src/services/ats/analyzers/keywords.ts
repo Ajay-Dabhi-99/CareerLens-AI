@@ -26,16 +26,20 @@ export function analyzeKeywords(resume: Resume): AtsCategoryResult {
   const corpus = resumeCorpus(resume);
   const total = wordCount(corpus);
 
-  if (total < 40) {
+  if (total < 25) {
+    // Not enough prose to judge how terminology is distributed. Reported and
+    // excluded rather than scored low, so a short but honest resume is not
+    // punished for something we could not measure.
     return {
       category: 'keywordQuality',
       weight: ATS_CATEGORY_WEIGHTS.keywordQuality,
-      score: total === 0 ? 0 : 25,
+      score: 0,
+      notAssessed: true,
       findings: [
         finding(
           'keywords.too-little-text',
-          'critical',
-          'There is too little text to assess terminology. Most resumes need considerably more detail.',
+          'warning',
+          'There was too little written content to assess terminology. Describing your work in more detail would let this be scored.',
         ),
       ],
     };

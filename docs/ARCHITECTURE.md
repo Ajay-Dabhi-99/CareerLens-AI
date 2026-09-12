@@ -108,9 +108,29 @@ schemas in `packages/validation`. Key types: `Resume`, `ResumeBullet`, `ResumeSu
 
 Transparent weighted categories (see `packages/types/src/ats.ts` for
 `ATS_CATEGORY_WEIGHTS`): ATS compatibility/structure 15%, skills quality 15%, experience
-strength 15%, impact & achievements 15%, keyword quality 10%, readability 10%, formatting
-10%, professionalism/completeness 10%. `finalScore = sum(categoryScore * categoryWeight)`.
-Weights live in one config module so the model is easy to evolve and version.
+strength 15%, **impact & achievements 20%**, keyword quality 10%, readability 10%,
+**formatting 5%**, professionalism/completeness 10%. Weights live in one config module so
+the model is easy to evolve and version.
+
+Impact outweighs the presentation categories because quantified achievements are the
+strongest measurable predictor of callbacks, while formatting consistency — real but
+minor — was previously worth as much as impact.
+
+**Analyzers score substance, not the absence of defects.** An earlier version started each
+category at 100 and only deducted, so a resume with two throwaway bullets tripped no check
+and scored full marks on experience, readability and formatting — 35% of the total awarded
+for doing almost nothing. Experience now scales with how well roles are described, and
+readability with whether bullets are long enough to carry an achievement.
+
+**Projects substitute for employment** when there is no work history, capped at 70, so
+graduates and career changers are judged on evidence they do have.
+
+**Stuffing is capped across categories.** Padding a skills list and repeating one ecosystem
+were each penalised locally, but the rest of a tidy resume could still carry the total. Two
+or more stuffing signals now cap the final score at 55.
+
+Benchmarked against six resumes spanning senior/quantified to unparseable, the usable range
+widened from 61-97 to 19-93.
 
 Implemented in `apps/api/src/services/ats/` — one pure analyzer per category, combined by
 `scoreResume`. Every category returns a 0-100 score plus `AtsFinding[]`, each finding

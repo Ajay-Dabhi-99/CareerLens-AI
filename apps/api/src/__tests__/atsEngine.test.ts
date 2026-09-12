@@ -139,6 +139,57 @@ describe('scoring model', () => {
     );
   });
 
+  it('caps a resume that games keyword matching', () => {
+    // Padding a skills list and repeating one ecosystem were each penalised in
+    // their own category, but the rest of the resume could still carry the
+    // total to a respectable number.
+    const stuffed: Resume = {
+      ...strongResume(),
+      skills: [
+        {
+          id: 's1',
+          category: 'Frontend',
+          skills: [
+            'React', 'React Native', 'React Router', 'React Query', 'React Hook Form',
+            'Redux', 'Vue', 'Angular', 'Svelte', 'Ember', 'Backbone', 'jQuery',
+            'Alpine', 'Lit', 'Preact', 'Solid', 'Qwik', 'Astro', 'Remix', 'Next',
+            'Nuxt', 'Gatsby', 'Eleventy', 'Hugo', 'Jekyll', 'Webpack', 'Vite',
+            'Rollup', 'Parcel', 'esbuild', 'Turbopack', 'Babel', 'SWC', 'Bun',
+            'Deno', 'Node', 'Express', 'Koa', 'Fastify', 'Nest', 'Hapi', 'Sails',
+          ],
+        },
+      ],
+    };
+
+    const score = scoreResume(stuffed);
+    const ids = score.categories.flatMap((c) => c.findings).map((f) => f.id);
+
+    expect(ids).toContain('skills.too-many');
+    expect(ids).toContain('skills.repetitive');
+    expect(score.finalScore).toBeLessThanOrEqual(55);
+  });
+
+  it('does not cap a legitimately broad resume with one weak signal', () => {
+    // A single signal is weak evidence; the cap needs a pattern.
+    const broad: Resume = {
+      ...strongResume(),
+      skills: [
+        {
+          id: 's1',
+          category: 'Tools',
+          skills: Array.from({ length: 42 }, (_, i) => `Tool${i}`),
+        },
+      ],
+    };
+
+    const ids = scoreResume(broad)
+      .categories.flatMap((c) => c.findings)
+      .map((f) => f.id);
+
+    expect(ids).toContain('skills.too-many');
+    expect(ids).not.toContain('skills.repetitive');
+  });
+
   it('gives an empty resume a very low score without throwing', () => {
     const score = scoreResume(emptyResume());
     expect(score.finalScore).toBeLessThan(20);
@@ -242,9 +293,42 @@ describe('experience analyzer', () => {
 
   it('flags missing titles, employers and dates', () => {
     const ids = analyzeExperience(weakResume()).findings.map((f) => f.id);
+    // Title and employer are reported together: a role missing either is
+    // equally unreadable to a filter.
     expect(ids).toContain('experience.missing-title');
-    expect(ids).toContain('experience.missing-company');
     expect(ids).toContain('experience.missing-dates');
+  });
+
+  it('scores a thinly described history well below a fully described one', () => {
+    // The category previously started at 100 and only deducted, so a single
+    // role with two throwaway bullets tied with a full senior history.
+    const thin = analyzeExperience(weakResume()).score;
+    const full = analyzeExperience(strongResume()).score;
+
+    expect(full).toBeGreaterThan(thin + 15);
+  });
+
+  it('lets described projects stand in for employment, but not fully', () => {
+    const projectsOnly: Resume = {
+      ...emptyResume(),
+      projects: [
+        {
+          id: 'p1',
+          name: 'StudyBuddy',
+          bullets: [
+            bullet('Built spaced-repetition scheduling used by 120 classmates'),
+            bullet('Deployed on Vercel with a Firestore backend'),
+          ],
+        },
+      ],
+    };
+
+    const result = analyzeExperience(projectsOnly);
+
+    expect(result.score).toBeGreaterThan(0);
+    // Paid experience remains stronger evidence, so the substitute is capped.
+    expect(result.score).toBeLessThanOrEqual(70);
+    expect(result.findings.map((f) => f.id)).toContain('experience.projects-only');
   });
 
   it('flags a role with no bullets at all', () => {
@@ -345,7 +429,7 @@ describe('readability analyzer', () => {
           title: 'Engineer',
           company: 'Acme',
           current: true,
-          bullets: [bullet(Array.from({ length: 40 }, () => 'word').join(' '))],
+          bullets: [bullet(Array.from({ length: 48 }, () => 'word').join(' '))],
         },
       ],
     };
@@ -357,6 +441,35 @@ describe('readability analyzer', () => {
   it('approves well-sized bullets', () => {
     expect(analyzeReadability(strongResume()).findings.map((f) => f.id)).toContain(
       'readability.good-bullet-length',
+    );
+  });
+
+  it('scores bullets too short to say anything well below well-written ones', () => {
+    // Four-word bullets trip no defect check, so this category previously
+    // awarded full marks to a resume that communicates nothing.
+    const terse: Resume = {
+      ...emptyResume(),
+      experience: [
+        {
+          id: 'e1',
+          title: 'Developer',
+          company: 'Acme',
+          current: true,
+          bullets: [
+            bullet('Helped with the website'),
+            bullet('Worked on projects'),
+            bullet('Did various tasks'),
+          ],
+        },
+      ],
+    };
+
+    const terseScore = analyzeReadability(terse).score;
+
+    expect(terseScore).toBeLessThan(40);
+    expect(analyzeReadability(strongResume()).score).toBeGreaterThan(terseScore + 40);
+    expect(analyzeReadability(terse).findings.map((f) => f.id)).toContain(
+      'readability.short-bullets',
     );
   });
 });
