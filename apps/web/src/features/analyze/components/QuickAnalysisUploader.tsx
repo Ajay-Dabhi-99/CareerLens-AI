@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FileDropzone } from '@/components/FileDropzone';
 import { ErrorState } from '@/components/ErrorState';
 import { ParsedResumeSummary } from '@/features/analyze/components/ParsedResumeSummary';
+import { ScoreResult } from '@/features/analyze/components/ScoreResult';
 import { preCheckFile } from '@/lib/upload';
 import {
   rememberQuickAnalysis,
@@ -88,9 +89,9 @@ export function QuickAnalysisUploader({ onComplete }: QuickAnalysisUploaderProps
             <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
               <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
               <div className="space-y-1">
-                <p className="text-sm font-medium">{phase.result.file.name} read successfully</p>
+                <p className="text-sm font-medium">{phase.result.file.name} analyzed</p>
                 <p className="text-sm text-muted-foreground">
-                  Your CV was parsed into structured sections. Scoring arrives in the next phase.
+                  Your CV was parsed and scored across eight categories.
                 </p>
                 <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
                   <Clock className="size-3" aria-hidden="true" />
@@ -102,6 +103,8 @@ export function QuickAnalysisUploader({ onComplete }: QuickAnalysisUploaderProps
                 </p>
               </div>
             </div>
+
+            <ScoreResult score={phase.result.score} />
 
             <ParsedResumeSummary
               resume={phase.result.resume}

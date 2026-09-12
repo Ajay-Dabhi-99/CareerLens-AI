@@ -124,11 +124,60 @@ describe('public quick analysis', () => {
     expect(response.statusCode).toBe(201);
     const body = response.json();
     expect(body.sessionToken).toBe('raw-token');
-    expect(body.status).toBe('parsed');
+    expect(body.status).toBe('scored');
     // The upload was parsed into structured data, not just stored.
     expect(body.resume.personal.fullName).toBe('Jane Doe');
     expect(body.resume.personal.email).toBe('jane@example.com');
     expect(body.detectedSections).toContain('experience');
+
+    await app.close();
+  });
+
+  it('returns a score with the free tier of findings only', async () => {
+    const app = await appWith(deps);
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/public/analyze',
+      payload,
+      headers,
+    });
+
+    const body = response.json();
+    expect(body.status).toBe('scored');
+    expect(body.score.finalScore).toBeGreaterThanOrEqual(0);
+    expect(body.score.finalScore).toBeLessThanOrEqual(100);
+    // Every category is shown — the score breakdown is the free promise.
+    expect(body.score.categories).toHaveLength(8);
+    // The detail is the gated part.
+    expect(body.score.findings.length).toBeLessThanOrEqual(3);
+    expect(body.score.withheldFindings).toBeGreaterThan(0);
+
+    await app.close();
+  });
+
+  it('does not send withheld findings to an anonymous client at all', async () => {
+    const app = await appWith(deps);
+    const { payload, headers } = multipart('cv.txt', resumeBuffer(), 'text/plain');
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/public/analyze',
+      payload,
+      headers,
+    });
+
+    const body = response.json();
+    const shownIds = new Set(body.score.findings.map((f: { id: string }) => f.id));
+
+    // The raw response must not contain findings beyond the ones we chose to show,
+    // otherwise the gate is cosmetic and recoverable from devtools.
+    const raw = response.body;
+    const leakedCategoryFindings = raw.includes('"findings":[{"id"') && body.score.withheldFindings > 0;
+    expect(leakedCategoryFindings).toBe(body.score.findings.length > 0);
+    expect(shownIds.size).toBe(body.score.findings.length);
+    expect(raw).not.toMatch(/"categories":\[\{"category":"[^"]+","weight":[^}]+,"findings"/);
 
     await app.close();
   });
@@ -317,6 +366,14 @@ describe('authenticated resume files', () => {
     expect(deps.resumeFiles.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: AUTHED_USER.id }),
     );
+
+    // Signed in means the full score, with findings attached to every category.
+    const body = response.json();
+    expect(body.score.categories).toHaveLength(8);
+    expect(body.score.categories.every((c: { findings: unknown[] }) => Array.isArray(c.findings))).toBe(
+      true,
+    );
+    expect(body.score.withheldFindings).toBeUndefined();
 
     await app.close();
   });

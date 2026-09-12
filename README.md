@@ -26,8 +26,11 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   rate limiting, plus authenticated uploads persisted to private storage. File type is
   validated by magic bytes, not the declared MIME type.
 - **Phase 4 — Parsing:** PDF/DOCX/TXT text extraction, section detection and
-  normalization into the canonical `ResumeData` model. Uploads now return structured
-  data; scoring arrives in Phase 5.
+  normalization into the canonical `ResumeData` model.
+- **Phase 5 — ATS engine:** eight deterministic weighted analyzers producing the Resume
+  Health score with explainable findings. No AI involved — the same resume always scores
+  the same. Anonymous users get the score and category breakdown plus the three most
+  important findings; the rest require an account.
 
 **Database setup:** run `supabase/migrations/0001_phase3_uploads.sql` in the Supabase SQL
 editor before starting the API.

@@ -112,6 +112,20 @@ strength 15%, impact & achievements 15%, keyword quality 10%, readability 10%, f
 10%, professionalism/completeness 10%. `finalScore = sum(categoryScore * categoryWeight)`.
 Weights live in one config module so the model is easy to evolve and version.
 
+Implemented in `apps/api/src/services/ats/` — one pure analyzer per category, combined by
+`scoreResume`. Every category returns a 0-100 score plus `AtsFinding[]`, each finding
+carrying a stable `id` (such as `impact.no-metrics`) so tests and UI key off the
+identifier rather than the wording.
+
+The engine is fully deterministic and makes no AI calls: the same resume always produces
+the same score, and every point is traceable to a finding the user can read. Findings
+state what is missing; they never guess at what the missing value might have been.
+
+**Free vs. gated.** `toPublicSummary` builds the anonymous view: the score and the full
+per-category breakdown are returned (that is what the landing page promises), but only the
+three most severe findings. The remainder are counted, not sent — withheld findings never
+reach an anonymous client, so there is nothing recoverable from devtools.
+
 ## Gemini AI contract
 
 The `AIProvider` interface (`packages/types/src/ai.ts`) is the only way business logic or

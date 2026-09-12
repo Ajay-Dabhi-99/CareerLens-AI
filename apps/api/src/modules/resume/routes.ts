@@ -7,6 +7,8 @@ import {
 import type { ResumeStorage } from '../../services/supabase/storage.js';
 import { extractResumeText } from '../../services/parser/textExtraction.js';
 import { parseResumeText } from '../../services/parser/resumeParser.js';
+import { scoreResume } from '../../services/ats/scoreResume.js';
+import { toPublicSummary } from '../../services/ats/publicSummary.js';
 import type { AnonymousSessionStore } from './anonymousSessionStore.js';
 import type { ResumeFileRepository } from './resumeFileRepository.js';
 
@@ -92,13 +94,18 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
         });
       }
 
+      const score = scoreResume(parsed.resume);
+
       // The file itself is not persisted for anonymous users — only the parsed
-      // structure and metadata, which expire with the session.
+      // structure and metrics, which expire with the session. The full findings
+      // are stored so they are available if the user signs in and imports, but
+      // only the free subset is returned here.
       const { token, session } = await anonymousSessions.create({
         fileName: received.fileName,
         fileType: validation.fileType,
         fileSize: received.buffer.length,
         parsedData: parsed.resume,
+        metrics: score,
       });
 
       return reply.code(201).send({
@@ -111,9 +118,8 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
         },
         resume: parsed.resume,
         detectedSections: parsed.sections.order,
-        // Scoring lands in Phase 5.
-        metrics: null,
-        status: 'parsed',
+        score: toPublicSummary(score),
+        status: 'scored',
       });
     },
   );
@@ -132,12 +138,16 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
         return reply.code(404).send({ error: 'This analysis has expired or does not exist.' });
       }
 
+      // Re-summarise rather than returning the stored score: this endpoint is
+      // public, so the withheld findings must not be served here either.
+      const storedScore = session.metrics as Parameters<typeof toPublicSummary>[0] | null;
+
       return {
         expiresAt: session.expiresAt,
         file: { name: session.fileName, type: session.fileType, size: session.fileSize },
         resume: session.parsedData,
-        metrics: session.metrics,
-        status: session.parsedData ? 'parsed' : 'awaiting-analysis',
+        score: storedScore ? toPublicSummary(storedScore) : null,
+        status: storedScore ? 'scored' : 'awaiting-analysis',
       };
     },
   );
@@ -190,7 +200,10 @@ export function registerResumeRoutes(app: FastifyInstance, deps: ResumeRouteDeps
       storagePath,
     });
 
-    return reply.code(201).send({ resumeFile: record, resume: parsed.resume });
+    // Signed in: the complete score with every finding, not the free subset.
+    const score = scoreResume(parsed.resume);
+
+    return reply.code(201).send({ resumeFile: record, resume: parsed.resume, score });
   });
 
   app.get('/api/resumes', { preHandler: app.requireAuth }, async (request, reply) => {

@@ -13,16 +13,30 @@ export type AtsCategory =
   | 'formatting'
   | 'professionalismCompleteness';
 
+export type AtsFindingSeverity = 'good' | 'warning' | 'critical';
+
+export interface AtsFinding {
+  /**
+   * Stable identifier such as `impact.no-metrics`. Tests and the UI key off this
+   * rather than the wording, so copy can change without breaking either.
+   */
+  id: string;
+  severity: AtsFindingSeverity;
+  message: string;
+}
+
 export interface AtsCategoryResult {
   category: AtsCategory;
   weight: number;
+  /** 0-100. The single convention across every analyzer. */
   score: number;
-  findings: string[];
+  findings: AtsFinding[];
 }
 
 export interface AtsScore {
   id: string;
   resumeVersionId: string;
+  /** 0-100, the weighted sum of the category scores. */
   finalScore: number;
   categories: AtsCategoryResult[];
   createdAt: string;
@@ -41,4 +55,16 @@ export const ATS_CATEGORY_WEIGHTS: Record<AtsCategory, number> = {
   readability: 0.1,
   formatting: 0.1,
   professionalismCompleteness: 0.1,
+};
+
+/** Human-readable labels, so the API and UI cannot drift apart. */
+export const ATS_CATEGORY_LABELS: Record<AtsCategory, string> = {
+  atsCompatibility: 'Structure',
+  skillsQuality: 'Skills',
+  experienceStrength: 'Experience',
+  impactAchievements: 'Impact',
+  keywordQuality: 'Keywords',
+  readability: 'Readability',
+  formatting: 'Formatting',
+  professionalismCompleteness: 'Completeness',
 };

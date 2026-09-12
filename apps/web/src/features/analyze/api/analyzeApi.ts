@@ -14,14 +14,28 @@ export interface ParsedResumePreview {
   metadata: { wordCount?: number };
 }
 
+export interface AtsFinding {
+  id: string;
+  severity: 'good' | 'warning' | 'critical';
+  message: string;
+}
+
+export interface PublicScore {
+  finalScore: number;
+  categories: Array<{ category: string; label: string; score: number; weight: number }>;
+  findings: AtsFinding[];
+  totalFindings: number;
+  withheldFindings: number;
+}
+
 export interface QuickAnalysisResult {
   sessionToken: string;
   expiresAt: string;
   file: { name: string; type: 'pdf' | 'docx' | 'txt'; size: number };
   resume: ParsedResumePreview;
   detectedSections: string[];
-  metrics: unknown | null;
-  status: 'awaiting-analysis' | 'parsed';
+  score: PublicScore;
+  status: 'awaiting-analysis' | 'scored';
 }
 
 export function uploadForQuickAnalysis(
