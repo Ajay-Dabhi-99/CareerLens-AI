@@ -8,6 +8,7 @@ export interface StoredFile {
 
 export interface ResumeStorage {
   upload(userId: string, fileName: string, contentType: string, body: Buffer): Promise<StoredFile>;
+  download(storagePath: string): Promise<Buffer>;
   remove(storagePath: string): Promise<void>;
 }
 
@@ -51,6 +52,25 @@ export function createResumeStorage(client: SupabaseClient): ResumeStorage {
       }
 
       return { storagePath };
+    },
+
+    /**
+     * Reads a stored original back.
+     *
+     * The AI review re-parses the file we hold rather than accepting resume
+     * JSON from the browser: the review has to describe the document the user
+     * actually uploaded, and a client-supplied body would let anyone spend an
+     * AI call on arbitrary text.
+     */
+    async download(storagePath) {
+      await ready();
+
+      const { data, error } = await client.storage.from(RESUME_BUCKET).download(storagePath);
+      if (error || !data) {
+        throw new Error(`Could not read the stored file: ${error?.message ?? 'no data'}`);
+      }
+
+      return Buffer.from(await data.arrayBuffer());
     },
 
     async remove(storagePath) {

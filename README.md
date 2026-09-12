@@ -32,8 +32,16 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   the same. Anonymous users get the score and category breakdown plus the three most
   important findings; the rest require an account.
 
-**Database setup:** run `supabase/migrations/0001_phase3_uploads.sql` in the Supabase SQL
-editor before starting the API.
+- **Phase 6 — Gemini integration:** `AIProvider` interface, prompts, structured output,
+  Zod validation and a retry policy built for free-tier reality. Backend only; the browser
+  never sees an API key.
+- **Phase 7 — AI resume review:** pros, cons, section reviews and prioritised actions,
+  grounded in the stored file rather than anything the browser sends. Reviews are saved, so
+  a resume is reviewed once and read back thereafter.
+
+**Database setup:** run the migrations in `supabase/migrations/` in order
+(`0001_phase3_uploads.sql`, then `0002_phase7_ai_reviews.sql`) in the Supabase SQL editor
+before starting the API.
 
 See `docs/ARCHITECTURE.md` for the full 19-phase build order.
 

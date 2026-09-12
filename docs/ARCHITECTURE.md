@@ -196,6 +196,35 @@ congestion backs off exponentially with jitter, malformed output retries almost 
 `retryDelay` or fails fast rather than spending more quota. `GEMINI_MODEL` is env-configurable
 so a retirement or quota change is a config change, not a deploy.
 
+## AI resume review (Phase 7)
+
+`POST /api/resumes/:id/review` produces the review; `GET` reads one back. Both are
+authenticated, and both scope every query by the caller's user id — the API holds the
+service role key, so those filters are the ownership boundary and RLS is defence behind
+them.
+
+**The review is grounded in the file we hold, not in JSON from the browser.** The stored
+original is downloaded, re-parsed and re-scored server-side before the model sees it. That
+is slower than trusting a request body, and it is the only version that is honest: a review
+has to describe the document the user actually uploaded, and a client-supplied resume would
+let anyone spend an AI call on arbitrary text.
+
+**Reviews are stored, and that is a cost control as much as a feature.** One call against a
+free tier that allows ~20 a day is not something to spend twice on the same unchanged file,
+so `resume_reviews` holds one row per file and the POST returns it untouched when it exists.
+`?refresh=true` is the only path that spends another call, and it is always a deliberate
+click. A per-user limit of 10 generations an hour keeps one enthusiastic re-analyser from
+exhausting the day's budget for everyone else; reading an existing review is not limited.
+
+**A failed review is never stored.** Caching a failure would make one bad minute permanent.
+Quota exhaustion returns 429 and an outage 503, both worded so the user knows their score is
+unaffected and the problem is ours and temporary.
+
+**The review leads; the score follows.** `AiReview` sits at the top of the page with the
+prioritised actions first, and the deterministic score is a single expandable line beneath
+it (`ScorePanel`). A number tells you where you stand, the review tells you what to do, and
+only one of those earns the top of the screen.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

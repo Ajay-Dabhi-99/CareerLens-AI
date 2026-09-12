@@ -90,6 +90,7 @@ function makeDeps() {
 
   const storage: ResumeStorage = {
     upload: vi.fn().mockResolvedValue({ storagePath: 'user-1/cv.pdf' }),
+    download: vi.fn().mockResolvedValue(resumeBuffer()),
     remove: vi.fn().mockResolvedValue(undefined),
   };
 

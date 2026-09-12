@@ -26,6 +26,22 @@ export class SetupError extends Error {
 const MISSING_TABLE_PATTERN = /could not find the table '([^']+)'|relation "([^"]+)" does not exist/i;
 
 /**
+ * Which migration creates which table, so the hint names the file to run rather
+ * than always pointing at the first one.
+ */
+const TABLE_MIGRATIONS: Record<string, string> = {
+  anonymous_analysis_sessions: '0001_phase3_uploads.sql',
+  resume_files: '0001_phase3_uploads.sql',
+  resume_reviews: '0002_phase7_ai_reviews.sql',
+};
+
+function migrationFor(table: string): string {
+  // Supabase reports the table as "public.resume_files"; the map is keyed bare.
+  const bare = table.replace(/^public\./, '');
+  return TABLE_MIGRATIONS[bare] ?? '0001_phase3_uploads.sql';
+}
+
+/**
  * Supabase reports an un-migrated schema as an ordinary query error. Surfacing that
  * verbatim both leaks internals and hides what actually needs doing, so it is
  * translated into a setup error with a concrete next step.
@@ -37,6 +53,6 @@ export function asSetupErrorIfMissingTable(message: string): SetupError | null {
   const table = match[1] ?? match[2] ?? 'a required table';
   return new SetupError(
     `Database table ${table} is missing.`,
-    'Run supabase/migrations/0001_phase3_uploads.sql in the Supabase SQL editor.',
+    `Run supabase/migrations/${migrationFor(table)} in the Supabase SQL editor.`,
   );
 }

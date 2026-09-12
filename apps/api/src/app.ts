@@ -17,7 +17,12 @@ import {
   type AnonymousSessionStore,
   type ResumeFileRepository,
 } from './modules/resume/index.js';
-import { createGeminiProvider } from './services/ai/index.js';
+import {
+  createResumeReviewRepository,
+  registerAiRoutes,
+  type ResumeReviewRepository,
+} from './modules/ai/index.js';
+import { createGeminiProvider, DEFAULT_MODEL } from './services/ai/index.js';
 import type { AIProvider } from '@career-lens-ai/types';
 import { createSupabaseAdminClient } from './services/supabase/client.js';
 import { createResumeStorage, type ResumeStorage } from './services/supabase/storage.js';
@@ -30,6 +35,7 @@ export interface BuildAppOptions {
   anonymousSessions?: AnonymousSessionStore;
   resumeFiles?: ResumeFileRepository;
   storage?: ResumeStorage;
+  reviews?: ResumeReviewRepository;
   aiProvider?: AIProvider;
 }
 
@@ -101,7 +107,11 @@ export async function buildApp(
   });
 
   const needsSupabase =
-    !options.authVerifier || !options.anonymousSessions || !options.resumeFiles || !options.storage;
+    !options.authVerifier ||
+    !options.anonymousSessions ||
+    !options.resumeFiles ||
+    !options.storage ||
+    !options.reviews;
   const supabase = needsSupabase ? createSupabaseAdminClient(env) : null;
 
   const authVerifier =
@@ -129,10 +139,20 @@ export async function buildApp(
 
   registerAuthRoutes(app);
 
+  const resumeFiles = options.resumeFiles ?? createResumeFileRepository(supabase!);
+  const storage = options.storage ?? createResumeStorage(supabase!);
+
   registerResumeRoutes(app, {
     anonymousSessions: options.anonymousSessions ?? createAnonymousSessionStore(supabase!),
-    resumeFiles: options.resumeFiles ?? createResumeFileRepository(supabase!),
-    storage: options.storage ?? createResumeStorage(supabase!),
+    resumeFiles,
+    storage,
+  });
+
+  registerAiRoutes(app, {
+    resumeFiles,
+    storage,
+    reviews: options.reviews ?? createResumeReviewRepository(supabase!),
+    model: env.GEMINI_MODEL ?? DEFAULT_MODEL,
   });
 
   return app;
