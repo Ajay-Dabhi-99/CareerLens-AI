@@ -58,6 +58,21 @@ export function registerEditorRoutes(app: FastifyInstance, deps: EditorRouteDeps
       return reply.code(404).send({ error: 'Resume file not found.' });
     }
 
+    /*
+     * Reopening, not duplicating. Without this, clicking Edit a second time on
+     * the same upload started a fresh resume: two copies of one CV drifting
+     * apart, with nothing to tell the user which held their work. Re-parsing
+     * would also throw away every edit they had already made.
+     */
+    const existing = await resumes.findByFile(file.id, user.id);
+    if (existing) {
+      const versions = await resumes.findVersions(existing.id, user.id);
+      const draft = versions.find((version) => version.label === 'draft');
+      if (draft) {
+        return reply.code(200).send({ resume: existing, draft, reopened: true });
+      }
+    }
+
     // Parsed from the stored original rather than from anything the browser
     // sends, for the same reason the AI review is: this becomes the user's
     // source of truth, so it has to come from the document they uploaded.
@@ -84,7 +99,7 @@ export function registerEditorRoutes(app: FastifyInstance, deps: EditorRouteDeps
       data: parsedResume,
     });
 
-    return reply.code(201).send({ resume, draft });
+    return reply.code(201).send({ resume, draft, reopened: false });
   });
 
   app.get<{ Params: { id: string } }>(

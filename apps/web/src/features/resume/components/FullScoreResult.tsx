@@ -1,20 +1,11 @@
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { ATS_CATEGORY_LABELS } from '@career-lens-ai/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScoreRing, barTone } from '@/components/ScoreRing';
 import { cn } from '@/lib/utils';
 import type { AtsFinding, FullScore } from '@/features/resume/api/resumeApi';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  atsCompatibility: 'Structure',
-  skillsQuality: 'Skills',
-  experienceStrength: 'Experience',
-  impactAchievements: 'Impact',
-  keywordQuality: 'Keywords',
-  readability: 'Readability',
-  formatting: 'Formatting',
-  professionalismCompleteness: 'Completeness',
-};
 
 const SEVERITY_ORDER = { critical: 0, warning: 1, good: 2 } as const;
 
@@ -78,7 +69,7 @@ export function FullScoreResult({ score }: { score: FullScore }) {
                 <li key={category.category} className="space-y-1">
                   <div className="flex items-baseline justify-between text-xs">
                     <span className="font-medium">
-                      {CATEGORY_LABELS[category.category] ?? category.category}
+                      {ATS_CATEGORY_LABELS[category.category as keyof typeof ATS_CATEGORY_LABELS] ?? category.category}
                     </span>
                     <span className="tabular-nums text-muted-foreground">
                       {category.score} · {Math.round(category.weight * 100)}%
@@ -124,7 +115,7 @@ export function FullScoreResult({ score }: { score: FullScore }) {
             <div key={category.category} className="space-y-2">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-semibold">
-                  {CATEGORY_LABELS[category.category] ?? category.category}
+                  {ATS_CATEGORY_LABELS[category.category as keyof typeof ATS_CATEGORY_LABELS] ?? category.category}
                 </h4>
                 <Badge variant={category.score >= 60 ? 'success' : 'outline'}>
                   {category.score}

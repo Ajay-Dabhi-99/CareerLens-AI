@@ -6,6 +6,7 @@ import { EntryCard, Field } from '@/features/editor/components/EntryCard';
 import { BulletListField, RichTextField } from '@/features/editor/components/RichTextField';
 import { RewriteButton, RewritePanel } from '@/features/editor/components/RewritePanel';
 import type { RewriteController } from '@/features/editor/hooks/useRewrite';
+import { mergeBullets, newId, replaceBulletWithAi } from '@/features/editor/lib/bullets';
 import type {
   Education,
   Experience,
@@ -13,39 +14,6 @@ import type {
   ResumeBullet,
   SkillGroup,
 } from '@/features/editor/api/editorApi';
-
-/** Ids are generated client-side; the server treats them as opaque strings. */
-function newId(prefix: string): string {
-  return `${prefix}-${crypto.randomUUID()}`;
-}
-
-/**
- * Bullets carry provenance (`source`, `verified`) that plain strings cannot.
- * Editing goes through strings for the rich-text bridge, so this maps back,
- * keeping the flags of bullets that survived and marking new lines as the
- * user's own words.
- */
-function mergeBullets(existing: ResumeBullet[], texts: string[]): ResumeBullet[] {
-  return texts.map((text, index) => {
-    const previous = existing[index];
-    if (previous && previous.text === text) return previous;
-    return { id: previous?.id ?? newId('b'), text, verified: true, source: 'user' };
-  });
-}
-
-/**
- * Replaces one bullet with AI-written text, recording where it came from.
- *
- * `source: 'ai'` and `verified: false` are what those fields exist for. A line
- * the model wrote is not yet a claim the candidate has stood behind, and losing
- * that distinction is how someone ends up defending an invented achievement in
- * an interview.
- */
-function replaceBulletWithAi(bullets: ResumeBullet[], index: number, text: string): ResumeBullet[] {
-  return bullets.map((bullet, i) =>
-    i === index ? { ...bullet, text, source: 'ai' as const, verified: false } : bullet,
-  );
-}
 
 /**
  * The bullets of one entry, each offering a rewrite.

@@ -69,6 +69,7 @@ export interface ResumeEditorRepository {
   create(input: CreateResumeInput): Promise<{ resume: ResumeRecord; draft: ResumeVersion }>;
   listForUser(userId: string): Promise<ResumeRecord[]>;
   findOwned(resumeId: string, userId: string): Promise<ResumeRecord | null>;
+  findByFile(resumeFileId: string, userId: string): Promise<ResumeRecord | null>;
   findVersions(resumeId: string, userId: string): Promise<ResumeVersion[]>;
   saveDraft(input: SaveDraftInput): Promise<ResumeVersion>;
   delete(resumeId: string, userId: string): Promise<boolean>;
@@ -166,6 +167,30 @@ export function createResumeEditorRepository(client: SupabaseClient): ResumeEdit
 
       if (error) {
         throw new Error(`Could not read the resume: ${error.message}`);
+      }
+
+      return data ? toResume(data as ResumeRow) : null;
+    },
+
+    /**
+     * The resume already built from a given upload, if there is one.
+     *
+     * Opening the editor twice on the same file must reopen the same work, not
+     * start a second copy: two resumes from one upload would drift apart
+     * silently and the user would have no way to tell which held their edits.
+     */
+    async findByFile(resumeFileId, userId) {
+      const { data, error } = await client
+        .from('resumes')
+        .select()
+        .eq('resume_file_id', resumeFileId)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Could not look up the resume for that file: ${error.message}`);
       }
 
       return data ? toResume(data as ResumeRow) : null;

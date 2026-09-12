@@ -92,6 +92,7 @@ function makeDeps() {
       .mockResolvedValue({ resume: resumeRecord(), draft: version('draft') }),
     listForUser: vi.fn().mockResolvedValue([resumeRecord()]),
     findOwned: vi.fn().mockResolvedValue(resumeRecord()),
+    findByFile: vi.fn().mockResolvedValue(null),
     findVersions: vi.fn().mockResolvedValue([version('original'), version('draft')]),
     saveDraft: vi.fn().mockImplementation((input) =>
       Promise.resolve({ ...version('draft', input.baseRevision + 1), data: input.data }),
@@ -155,6 +156,47 @@ describe('resume editor', () => {
 
     const created = vi.mocked(deps.editorResumes.create).mock.calls[0]![0];
     expect(created.data.personal.fullName).toBe('Jane Doe');
+
+    await app.close();
+  });
+
+  it('reopens the existing resume instead of starting a second copy', async () => {
+    // Clicking Edit twice on one upload used to create two resumes that then
+    // drifted apart, with nothing to tell the user which held their work — and
+    // the second re-parsed the file, discarding every edit already made.
+    vi.mocked(deps.editorResumes.findByFile).mockResolvedValue(resumeRecord());
+
+    const app = await buildApp(testEnv, deps);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/editor/resumes',
+      headers: AUTH_HEADER,
+      payload: { resumeFileId: 'file-1' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().reopened).toBe(true);
+    expect(deps.editorResumes.create).not.toHaveBeenCalled();
+    // Re-parsing would have thrown away the user's edits.
+    expect(deps.storage.download).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
+  it('creates a fresh resume when a different file is opened', async () => {
+    const app = await buildApp(testEnv, deps);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/editor/resumes',
+      headers: AUTH_HEADER,
+      payload: { resumeFileId: 'file-1' },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().reopened).toBe(false);
+    expect(deps.editorResumes.create).toHaveBeenCalledTimes(1);
 
     await app.close();
   });

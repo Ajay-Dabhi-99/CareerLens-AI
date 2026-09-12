@@ -111,13 +111,17 @@ export async function listEditorResumes(): Promise<ResumeRecord[]> {
 export async function createEditorResume(
   resumeFileId: string,
   title?: string,
-): Promise<{ resume: ResumeRecord; draft: ResumeVersion }> {
+): Promise<{ resume: ResumeRecord; draft: ResumeVersion; reopened: boolean }> {
   const response = await authedFetch('/api/editor/resumes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ resumeFileId, title }),
   });
-  return (await response.json()) as { resume: ResumeRecord; draft: ResumeVersion };
+  return (await response.json()) as {
+    resume: ResumeRecord;
+    draft: ResumeVersion;
+    reopened: boolean;
+  };
 }
 
 export async function getEditorResume(id: string): Promise<EditorSnapshot> {

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingState } from '@/components/LoadingState';
+import { ATS_CATEGORY_LABELS } from '@career-lens-ai/types';
 import { barTone, scoreTone } from '@/components/ScoreRing';
 import { cn } from '@/lib/utils';
 import type { FullScore } from '@/features/resume/api/resumeApi';
@@ -421,7 +422,11 @@ export function EditorPage() {
                   {score.categories.map((category) => (
                     <li key={category.category} className="space-y-1">
                       <div className="flex items-baseline justify-between text-[11px]">
-                        <span className="text-muted-foreground">{category.category}</span>
+                        <span className="text-muted-foreground">
+                          {ATS_CATEGORY_LABELS[
+                            category.category as keyof typeof ATS_CATEGORY_LABELS
+                          ] ?? category.category}
+                        </span>
                         <span className="tabular-nums">{category.score}</span>
                       </div>
                       <div className="h-1 overflow-hidden rounded-full bg-muted">
