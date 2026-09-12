@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileDropzone } from '@/components/FileDropzone';
 import { ErrorState } from '@/components/ErrorState';
-import { ParsedResumeSummary } from '@/features/analyze/components/ParsedResumeSummary';
-import { ScoreResult } from '@/features/analyze/components/ScoreResult';
+import { ParsedResumeSummary } from '@/features/quick-analysis/components/ParsedResumeSummary';
+import { ScoreResult } from '@/features/quick-analysis/components/ScoreResult';
 import { preCheckFile } from '@/lib/upload';
 import {
   rememberQuickAnalysis,
   uploadForQuickAnalysis,
   type QuickAnalysisResult,
-} from '@/features/analyze/api/analyzeApi';
+} from '@/features/quick-analysis/api/quickAnalysisApi';
 
 type Phase =
   | { kind: 'idle' }

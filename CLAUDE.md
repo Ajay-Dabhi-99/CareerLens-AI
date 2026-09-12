@@ -86,17 +86,26 @@ job match, export) is private.
 apps/web/src/
   app/          Root App component, router, global providers (Phase 1+)
   components/   Shared/reusable UI components used by more than one feature
-  features/     One folder per feature — auth, dashboard, resume, analysis,
-                editor, job-match, versions, export. See "Feature folder shape" below.
+  features/     One folder per feature. See "Feature folder shape" below.
+                Built: marketing (landing), quick-analysis (the free public
+                check), auth, dashboard, resume, job-match, versions.
+                Reserved for later phases: analysis (the signed-in AI review),
+                editor, export.
+                Note quick-analysis and analysis are different things: the
+                first is the anonymous score, the second is the AI review
+                behind login.
   hooks/        Cross-cutting hooks not owned by a single feature
   lib/          Framework-agnostic clients/utilities (e.g. lib/api.ts)
   stores/       Zustand stores for client/editor/UI state
   types/        App-only types not already covered by @career-lens-ai/types
 apps/api/src/
   modules/      One folder per domain — auth, resume, analysis, ats, ai, jobs, versions, export
-                (route handlers + request orchestration)
-  services/     Reusable framework-agnostic logic — ai, parser, ats, matcher, exporter
-  utils/        Small cross-cutting helpers
+                (route handlers + request orchestration). Every entry here is a
+                domain folder; shared helpers belong in utils/, not alongside them.
+  services/     Reusable framework-agnostic logic — parser, ats, upload, supabase,
+                and later ai, matcher, exporter. Services know nothing about HTTP,
+                which is what makes them straightforward to test.
+  utils/        Cross-cutting helpers such as errors.ts
 packages/types/        Shared domain types (Resume, ATS, Job, AIProvider contract)
 packages/validation/   Zod schemas mirroring the domain types
 packages/config/       Shared environment schemas

@@ -1,7 +1,7 @@
 import { Briefcase, GraduationCap, Mail, MapPin, Phone, User, Wrench } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { ParsedResumePreview } from '@/features/analyze/api/analyzeApi';
+import type { ParsedResumePreview } from '@/features/quick-analysis/api/quickAnalysisApi';
 
 export interface ParsedResumeSummaryProps {
   resume: ParsedResumePreview;

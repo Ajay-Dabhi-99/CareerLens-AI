@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import type { AtsFinding, PublicScore } from '@/features/analyze/api/analyzeApi';
+import type { AtsFinding, PublicScore } from '@/features/quick-analysis/api/quickAnalysisApi';
 
 const RADIUS = 56;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;

@@ -20,7 +20,7 @@ import {
 import { createSupabaseAdminClient } from './services/supabase/client.js';
 import { createResumeStorage, type ResumeStorage } from './services/supabase/storage.js';
 import { MAX_UPLOAD_BYTES } from './services/upload/fileValidation.js';
-import { PublicError, SetupError, asSetupErrorIfMissingTable } from './modules/errors.js';
+import { PublicError, SetupError, asSetupErrorIfMissingTable } from './utils/errors.js';
 
 export interface BuildAppOptions {
   /** Overrides let tests run without a live Supabase project. */

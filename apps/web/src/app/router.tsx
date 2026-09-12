@@ -3,7 +3,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { LoginPage, ProtectedRoute, SignupPage } from '@/features/auth';
 import { LandingPage } from '@/features/marketing';
-import { AnalyzePage } from '@/features/analyze';
+import { QuickAnalysisPage } from '@/features/quick-analysis';
 import { DashboardPage } from '@/features/dashboard';
 import { ResumePage } from '@/features/resume';
 import { JobMatchPage } from '@/features/job-match';
@@ -16,7 +16,7 @@ export function AppRouter() {
       {/* Public: no account required */}
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
-        <Route path="analyze" element={<AnalyzePage />} />
+        <Route path="analyze" element={<QuickAnalysisPage />} />
       </Route>
 
       <Route path="/login" element={<LoginPage />} />

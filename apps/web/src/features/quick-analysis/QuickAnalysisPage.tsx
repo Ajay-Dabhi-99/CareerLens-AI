@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { LockedPremiumGrid } from '@/features/analyze/components/LockedPremiumGrid';
-import { QuickAnalysisUploader } from '@/features/analyze/components/QuickAnalysisUploader';
+import { LockedPremiumGrid } from '@/features/quick-analysis/components/LockedPremiumGrid';
+import { QuickAnalysisUploader } from '@/features/quick-analysis/components/QuickAnalysisUploader';
 
 const FREE_INCLUDES = [
   'Overall Resume Health / ATS-style score',
@@ -9,7 +9,7 @@ const FREE_INCLUDES = [
   'Whether your core sections are detected correctly',
 ];
 
-export function AnalyzePage() {
+export function QuickAnalysisPage() {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-10 px-4 py-10 sm:px-6">
       <div className="space-y-2">
