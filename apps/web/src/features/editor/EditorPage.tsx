@@ -386,6 +386,12 @@ export function EditorPage() {
                 value={data.personal.github ?? ''}
                 onChange={(github) => edit({ personal: { ...data.personal, github } })}
               />
+              <Field
+                id="personal-website"
+                label="Website"
+                value={data.personal.website ?? ''}
+                onChange={(website) => edit({ personal: { ...data.personal, website } })}
+              />
             </CardContent>
           </Card>
 

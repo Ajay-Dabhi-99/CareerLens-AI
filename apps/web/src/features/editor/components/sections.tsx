@@ -154,6 +154,13 @@ export function ExperienceSection({
               onChange={(company) => update(index, { company })}
             />
             <Field
+              id={`role-location-${role.id}`}
+              label="Location"
+              value={role.location ?? ''}
+              placeholder="London, UK"
+              onChange={(location) => update(index, { location })}
+            />
+            <Field
               id={`role-start-${role.id}`}
               label="Start"
               value={role.startDate ?? ''}
@@ -256,6 +263,61 @@ export function ProjectsSection({
               placeholder="github.com/you/project"
               onChange={(link) => update(index, { link })}
             />
+            <Field
+              id={`project-tech-${project.id}`}
+              label="Built with"
+              value={(project.technologies ?? []).join(', ')}
+              placeholder="React, Firebase"
+              onChange={(value) =>
+                update(index, {
+                  technologies: value
+                    .split(',')
+                    .map((tech) => tech.trim())
+                    .filter((tech) => tech.length > 0),
+                })
+              }
+            />
+          </div>
+
+          {/*
+            The one-line pitch for the project, and the only place the 'project'
+            rewrite target applies: bullets below are rewritten one at a time as
+            bullets, but this sentence is what makes someone read them.
+          */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor={`project-description-${project.id}`}>In one line</Label>
+              <RewriteButton
+                label="Improve"
+                disabled={
+                  rewrite.state.kind === 'loading' &&
+                  rewrite.activeKey !== `${project.id}-description`
+                }
+                onClick={() =>
+                  rewrite.start(
+                    `${project.id}-description`,
+                    'project',
+                    project.description ?? '',
+                    (description) => update(index, { description }),
+                  )
+                }
+              />
+            </div>
+            <Input
+              id={`project-description-${project.id}`}
+              value={project.description ?? ''}
+              placeholder="A revision planner used by 120 classmates"
+              onChange={(event) => update(index, { description: event.target.value })}
+            />
+            {rewrite.activeKey === `${project.id}-description` ? (
+              <RewritePanel
+                state={rewrite.state}
+                currentText={rewrite.currentText}
+                onAccept={rewrite.accept}
+                onDismiss={rewrite.dismiss}
+                onRetry={rewrite.retry}
+              />
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -448,6 +510,20 @@ export function EducationSection({
               label="Institution"
               value={entry.institution}
               onChange={(institution) => update(index, { institution })}
+            />
+            <Field
+              id={`edu-field-${entry.id}`}
+              label="Field of study"
+              value={entry.fieldOfStudy ?? ''}
+              placeholder="Computer Science"
+              onChange={(fieldOfStudy) => update(index, { fieldOfStudy })}
+            />
+            <Field
+              id={`edu-gpa-${entry.id}`}
+              label="Grade"
+              value={entry.gpa ?? ''}
+              placeholder="First class"
+              onChange={(gpa) => update(index, { gpa })}
             />
             <Field
               id={`edu-start-${entry.id}`}
