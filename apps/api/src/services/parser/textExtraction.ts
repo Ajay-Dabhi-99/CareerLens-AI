@@ -16,6 +16,70 @@ function standardFontDataUrl(): string {
   return pathToFileURL(path.join(root, 'standard_fonts') + path.sep).href;
 }
 
+interface PositionedItem {
+  str: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Rebuilds page text from item positions rather than the order the PDF happens
+ * to draw them in.
+ *
+ * Draw order is not reading order. Real resumes place a section heading in its
+ * own text block, and the producer may emit it *after* the content it labels —
+ * which made a skills heading arrive below its own bullet list, so the section
+ * parsed as empty.
+ *
+ * Doing this positionally also fixes word splitting: PDFs break words across
+ * items for kerning, so inserting a space after every item produced text like
+ * "Frontend-f ocused". A space is now added only where there is a real
+ * horizontal gap.
+ */
+function layoutToText(items: PositionedItem[]): string {
+  if (items.length === 0) return '';
+
+  // Group items onto visual lines. y is compared with a tolerance because
+  // glyphs on one line rarely share an exact baseline.
+  const lines: PositionedItem[][] = [];
+  const sorted = [...items].sort((a, b) => b.y - a.y || a.x - b.x);
+
+  for (const item of sorted) {
+    const tolerance = Math.max(2, item.height * 0.5);
+    const line = lines.find((candidate) => Math.abs((candidate[0]?.y ?? 0) - item.y) <= tolerance);
+    if (line) line.push(item);
+    else lines.push([item]);
+  }
+
+  return lines
+    .map((line) => {
+      const ordered = [...line].sort((a, b) => a.x - b.x);
+      let text = '';
+
+      for (let index = 0; index < ordered.length; index += 1) {
+        const item = ordered[index]!;
+        if (index === 0) {
+          text = item.str;
+          continue;
+        }
+
+        const previous = ordered[index - 1]!;
+        const gap = item.x - (previous.x + previous.width);
+        // Roughly a quarter of the glyph height is a reliable word separator;
+        // anything tighter is the same word split across items.
+        const spaceThreshold = Math.max(1, previous.height * 0.25);
+        const needsSpace = gap > spaceThreshold && !text.endsWith(' ') && !item.str.startsWith(' ');
+
+        text += needsSpace ? ` ${item.str}` : item.str;
+      }
+
+      return text;
+    })
+    .join('\n');
+}
+
 async function extractPdfText(buffer: Buffer): Promise<string> {
   // The legacy build is the one pdf.js supports in Node.
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -38,16 +102,20 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
       const page = await document.getPage(pageNumber);
       const content = await page.getTextContent();
 
-      let pageText = '';
+      const positioned: PositionedItem[] = [];
       for (const item of content.items) {
-        if (!('str' in item)) continue;
-        pageText += item.str;
-        // pdf.js marks the end of a visual line, which is how we recover layout.
-        if (item.hasEOL) pageText += '\n';
-        else if (item.str && !item.str.endsWith(' ')) pageText += ' ';
+        if (!('str' in item) || item.str === '') continue;
+        const transform = item.transform as number[];
+        positioned.push({
+          str: item.str,
+          x: transform[4] ?? 0,
+          y: transform[5] ?? 0,
+          width: item.width ?? 0,
+          height: Math.abs(transform[3] ?? item.height ?? 10) || 10,
+        });
       }
 
-      pages.push(pageText);
+      pages.push(layoutToText(positioned));
       page.cleanup();
     }
 

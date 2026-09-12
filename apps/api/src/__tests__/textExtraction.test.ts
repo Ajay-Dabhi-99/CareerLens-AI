@@ -10,9 +10,26 @@ function escapePdfText(value: string): string {
  * a real document rather than a mock. Generated rather than committed as a binary
  * fixture, so the input stays readable in the test.
  */
+/**
+ * Draws lines at explicit positions, in a deliberately scrambled draw order.
+ *
+ * Real PDF producers emit headings in separate text blocks, so draw order does
+ * not match reading order. `positions` is [x, y, text] in PDF user space.
+ */
+function buildPositionedPdf(positions: Array<[number, number, string]>): Buffer {
+  const body = positions
+    .map(([x, y, text]) => `BT /F1 12 Tf ${x} ${y} Td (${escapePdfText(text)}) Tj ET`)
+    .join('\n');
+  return assemblePdf(body);
+}
+
 function buildPdf(lines: string[]): Buffer {
   const body = lines.map((line) => `(${escapePdfText(line)}) Tj T*`).join('\n');
   const content = `BT /F1 12 Tf 72 720 Td 14 TL\n${body}\nET`;
+  return assemblePdf(content);
+}
+
+function assemblePdf(content: string): Buffer {
 
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -54,6 +71,50 @@ describe('extractResumeText', () => {
     expect(text).toContain('JANE DOE');
     expect(text).toContain('jane.doe@example.com');
     expect(text).toContain('Staff Engineer');
+  }, 30_000);
+
+  it('reads by position, not draw order, so a heading cannot land below its content', async () => {
+    // A real CV did exactly this: the producer drew "TECHNICAL SKILLS" after the
+    // skill lines it labels, so the section parsed as empty.
+    const pdf = buildPositionedPdf([
+      [72, 600, 'Languages: JavaScript, TypeScript'],
+      [72, 580, 'Frontend: React, Redux'],
+      [72, 620, 'TECHNICAL SKILLS'],
+      [72, 700, 'AJAY DABHI'],
+    ]);
+
+    const text = await extractResumeText(pdf, 'pdf');
+    const lines = text.split('\n');
+
+    expect(lines[0]).toContain('AJAY DABHI');
+    expect(lines.indexOf('TECHNICAL SKILLS')).toBeLessThan(
+      lines.findIndex((line) => line.startsWith('Languages:')),
+    );
+  }, 30_000);
+
+  it('does not insert spaces inside words split across text items', async () => {
+    // PDFs break words apart for kerning. Adding a space after every item
+    // produced "Frontend-f ocused" and "React R outer".
+    const pdf = buildPositionedPdf([
+      [72, 700, 'Frontend-f'],
+      [107, 700, 'ocused engineer'],
+    ]);
+
+    const text = await extractResumeText(pdf, 'pdf');
+
+    expect(text).toContain('Frontend-focused');
+    expect(text).not.toContain('Frontend-f ocused');
+  }, 30_000);
+
+  it('still separates words that have a real gap between them', async () => {
+    const pdf = buildPositionedPdf([
+      [72, 700, 'React'],
+      [140, 700, 'Router'],
+    ]);
+
+    const text = await extractResumeText(pdf, 'pdf');
+
+    expect(text).toContain('React Router');
   }, 30_000);
 
   it('reads plain text verbatim', async () => {
