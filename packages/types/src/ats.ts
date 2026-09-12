@@ -31,6 +31,15 @@ export interface AtsCategoryResult {
   /** 0-100. The single convention across every analyzer. */
   score: number;
   findings: AtsFinding[];
+  /**
+   * True when the resume contained nothing this category could judge.
+   *
+   * Scoring such a category 0 would blame the candidate for an absence of
+   * evidence — often our own parsing limitation rather than a flaw in their
+   * resume. Unassessed categories are excluded from the weighted total and the
+   * remaining weights are renormalised.
+   */
+  notAssessed?: boolean;
 }
 
 export interface AtsScore {

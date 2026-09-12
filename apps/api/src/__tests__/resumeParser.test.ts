@@ -105,6 +105,18 @@ describe('matchSectionHeading', () => {
     expect(matchSectionHeading(line)).toBeNull();
   });
 
+  it.each([
+    'React.js Developer | Scalelot Technologies',
+    'Senior Engineer | Acme Solutions Pvt. Ltd.',
+    'Software Engineer | Vagaro Technologies Pvt. Ltd.',
+    'Jun 2023 - Mar 2024 | Surat, India',
+  ])('does not mistake the role line %s for a heading', (line) => {
+    // Employers are routinely named "… Technologies" or "… Solutions". Without
+    // guards the job title line was read as a skills heading and swallowed the
+    // entire role beneath it.
+    expect(matchSectionHeading(line)).toBeNull();
+  });
+
   it('ignores unrelated lines', () => {
     expect(matchSectionHeading('Jane Doe')).toBeNull();
   });
@@ -199,6 +211,29 @@ describe('parseExperience', () => {
       endDate: 'Dec 2020',
       current: false,
     });
+  });
+
+  it('treats indented lines as bullets when the document has no bullet glyphs', () => {
+    // Many resumes draw bullets as vector shapes, so nothing marks them in the
+    // extracted text. Without using indentation the whole work history collapsed
+    // into one entry describing nothing.
+    const lines = [
+      'Software Engineer | Vagaro',
+      'Apr 2024 - Present',
+      '    Own the frontend architecture for 4 core modules',
+      '    Improved checkout performance by 90%',
+      '',
+      'React.js Developer | Enthusia',
+      'Jun 2023 - Mar 2024',
+      '    Built an admin panel with centralized state',
+    ];
+
+    const experience = parseExperience(lines);
+
+    expect(experience).toHaveLength(2);
+    expect(experience[0]?.bullets).toHaveLength(2);
+    expect(experience[1]?.bullets).toHaveLength(1);
+    expect(experience[0]?.bullets[0]?.text).toBe('Own the frontend architecture for 4 core modules');
   });
 
   it('attributes parsed bullets to the user, not the AI', () => {

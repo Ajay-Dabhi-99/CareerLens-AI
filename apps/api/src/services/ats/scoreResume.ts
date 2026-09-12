@@ -38,9 +38,25 @@ export interface ScoreResumeOptions {
 export function scoreResume(resume: Resume, options: ScoreResumeOptions = {}): AtsScore {
   const categories: AtsCategoryResult[] = ANALYZERS.map((analyze) => analyze(resume));
 
-  const finalScore = Math.round(
-    categories.reduce((total, category) => total + category.score * category.weight, 0),
-  );
+  /*
+   * Categories that had nothing to judge are excluded rather than counted as
+   * zero, and the remaining weights are renormalised so the score still reads
+   * out of 100.
+   *
+   * Counting them as zero conflates "this resume is bad" with "we could not
+   * read this resume". A CV whose bullets are drawn as vector glyphs, for
+   * instance, is not a CV without achievements.
+   */
+  const assessed = categories.filter((category) => !category.notAssessed);
+  const totalWeight = assessed.reduce((total, category) => total + category.weight, 0);
+
+  const finalScore =
+    totalWeight > 0
+      ? Math.round(
+          assessed.reduce((total, category) => total + category.score * category.weight, 0) /
+            totalWeight,
+        )
+      : 0;
 
   return {
     id: randomUUID(),

@@ -17,12 +17,19 @@ export function analyzeFormatting(resume: Resume): AtsCategoryResult {
   const bullets = allBullets(resume);
 
   if (bullets.length === 0) {
+    // Excluded from the total for the same reason as impact: no evidence is not
+    // evidence of a problem.
     return {
       category: 'formatting',
       weight: ATS_CATEGORY_WEIGHTS.formatting,
       score: 0,
+      notAssessed: true,
       findings: [
-        finding('formatting.nothing-to-check', 'critical', 'There is no formatted content to assess.'),
+        finding(
+          'formatting.nothing-to-check',
+          'warning',
+          'No bullet points were found, so formatting consistency could not be checked.',
+        ),
       ],
     };
   }

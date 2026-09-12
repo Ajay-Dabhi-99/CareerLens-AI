@@ -143,6 +143,43 @@ describe('scoring model', () => {
     const score = scoreResume(emptyResume());
     expect(score.finalScore).toBeLessThan(20);
   });
+
+  it('excludes categories it could not assess rather than scoring them zero', () => {
+    // A resume whose bullets are drawn as vector glyphs yields no bullets to
+    // read. Counting impact and formatting as zero would blame the candidate
+    // for a limitation of our parsing.
+    const noBullets: Resume = {
+      ...strongResume(),
+      experience: strongResume().experience.map((role) => ({ ...role, bullets: [] })),
+    };
+
+    const score = scoreResume(noBullets);
+    const impact = score.categories.find((c) => c.category === 'impactAchievements');
+    const formatting = score.categories.find((c) => c.category === 'formatting');
+
+    expect(impact?.notAssessed).toBe(true);
+    expect(formatting?.notAssessed).toBe(true);
+
+    // The remaining categories are renormalised, so the total still reads out of
+    // 100 rather than being dragged down by the two that could not be judged.
+    const assessed = score.categories.filter((c) => !c.notAssessed);
+    const weight = assessed.reduce((total, c) => total + c.weight, 0);
+    const expected = Math.round(
+      assessed.reduce((total, c) => total + c.score * c.weight, 0) / weight,
+    );
+    expect(score.finalScore).toBe(expected);
+    expect(score.finalScore).toBeGreaterThan(60);
+  });
+
+  it('still counts a category that had data and scored badly', () => {
+    // Not-assessed must not become an escape hatch for genuinely weak sections.
+    const weak = scoreResume(weakResume());
+    const impact = weak.categories.find((c) => c.category === 'impactAchievements');
+
+    // The weak resume has one bullet, so impact is assessable and scores poorly.
+    expect(impact?.notAssessed).toBeUndefined();
+    expect(impact?.score).toBeLessThan(40);
+  });
 });
 
 describe('structure analyzer', () => {

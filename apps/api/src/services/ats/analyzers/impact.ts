@@ -36,15 +36,18 @@ export function analyzeImpact(resume: Resume): AtsCategoryResult {
   const bullets = allBullets(resume);
 
   if (bullets.length === 0) {
+    // Nothing to judge. Reported, but excluded from the total rather than
+    // scored zero — an unreadable layout is not the same as weak achievements.
     return {
       category: 'impactAchievements',
       weight: ATS_CATEGORY_WEIGHTS.impactAchievements,
       score: 0,
+      notAssessed: true,
       findings: [
         finding(
           'impact.no-bullets',
-          'critical',
-          'There are no bullet points to assess. Describe what you did in each role.',
+          'warning',
+          'No bullet points were found to assess, so impact could not be scored. If your resume does describe your work, the layout may be hard for filters to read.',
         ),
       ],
     };

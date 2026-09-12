@@ -37,12 +37,29 @@ const DEGREE_PATTERN =
 
 const INSTITUTION_PATTERN = /\b(universit|college|school|institute|academy|polytechnic|iit|nit|nid|iim)\b/i;
 
-function isBullet(line: string): boolean {
-  return BULLET_PREFIX.test(line);
+/** Indentation deeper than this marks a continuation rather than a new entry. */
+const BULLET_INDENT_SPACES = 2;
+
+function indentOf(line: string): number {
+  return (/^ */.exec(line)?.[0] ?? '').length;
+}
+
+/**
+ * A line is a bullet if it carries a bullet glyph, or if it is indented
+ * relative to the entry it belongs to.
+ *
+ * Many resumes draw bullet glyphs as vector shapes, so no character survives
+ * extraction. Without the indentation check every such line reads as the start
+ * of a new role, which collapses an entire work history into a single entry
+ * with nothing described under it.
+ */
+function isBullet(line: string, baseIndent = 0): boolean {
+  if (BULLET_PREFIX.test(line.trim())) return true;
+  return indentOf(line) >= baseIndent + BULLET_INDENT_SPACES;
 }
 
 function stripBullet(line: string): string {
-  return line.replace(BULLET_PREFIX, '').trim();
+  return line.trim().replace(BULLET_PREFIX, '').trim();
 }
 
 function toBullet(text: string): ResumeBullet {
@@ -128,13 +145,19 @@ function groupEntries(lines: string[]): Array<{ headerLines: string[]; bullets: 
   const entries: Array<{ headerLines: string[]; bullets: string[] }> = [];
   let currentEntry: { headerLines: string[]; bullets: string[] } | null = null;
 
+  // Entry headers sit at the section's shallowest indentation; anything deeper
+  // continues the entry above it.
+  const contentLines = lines.filter((line) => line.trim() !== '');
+  const baseIndent =
+    contentLines.length > 0 ? Math.min(...contentLines.map((line) => indentOf(line))) : 0;
+
   for (const line of lines) {
-    if (line === '') {
+    if (line.trim() === '') {
       currentEntry = null;
       continue;
     }
 
-    if (isBullet(line)) {
+    if (isBullet(line, baseIndent)) {
       // A bullet with no preceding header still belongs somewhere.
       currentEntry ??= (() => {
         const created = { headerLines: [], bullets: [] };
@@ -147,10 +170,10 @@ function groupEntries(lines: string[]): Array<{ headerLines: string[]; bullets: 
 
     // A new non-bullet line after bullets means a new entry has started.
     if (!currentEntry || currentEntry.bullets.length > 0) {
-      currentEntry = { headerLines: [line], bullets: [] };
+      currentEntry = { headerLines: [line.trim()], bullets: [] };
       entries.push(currentEntry);
     } else {
-      currentEntry.headerLines.push(line);
+      currentEntry.headerLines.push(line.trim());
     }
   }
 
@@ -219,7 +242,7 @@ export function parseSkills(lines: string[]): SkillGroup[] {
   const ungrouped: string[] = [];
 
   for (const line of lines) {
-    if (line === '') continue;
+    if (line.trim() === '') continue;
     const cleaned = stripBullet(line);
 
     // "Languages: TypeScript, Go, Python"

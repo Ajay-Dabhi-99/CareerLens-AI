@@ -62,12 +62,30 @@ function classify(text: string): SectionKey | null {
  * "Experience building distributed systems across three teams" mentions a
  * keyword but is body text.
  */
+/**
+ * Markers that a line carries data rather than labelling a section.
+ *
+ * A pipe separates fields ("React.js Developer | Scalelot Technologies"), a year
+ * belongs to a date range, and a corporate suffix names an employer. Any of them
+ * means this is content, whatever keywords it happens to contain.
+ *
+ * This matters because employers are routinely called "… Technologies" or
+ * "… Solutions": without these guards a job title line is read as a skills
+ * heading and swallows the entire role beneath it.
+ */
+const CONTENT_MARKERS = [
+  /\|/,
+  /\b(19|20)\d{2}\b/,
+  /\b(ltd|limited|inc|llc|llp|pvt|private|gmbh|corp|corporation|co)\b\.?/i,
+];
+
 export function matchSectionHeading(line: string): SectionKey | null {
   // A colon with content after it is not a bare heading: it is either a heading
   // sharing its line with content ("SKILLS: Java, Python") or a labelled group
   // inside a section ("Tools: Docker"). Both are handled elsewhere, and matching
   // here would silently discard everything after the colon.
   if (/:\s*\S/.test(line)) return null;
+  if (CONTENT_MARKERS.some((marker) => marker.test(line))) return null;
 
   const cleaned = line
     .replace(/[:•\-–—_]+$/g, '')
@@ -158,7 +176,9 @@ export function detectSections(text: string): DetectedSections {
     }
 
     if (current) {
-      sections[current]!.push(trimmed);
+      // Indentation is retained: the parser uses it to tell a bullet from the
+      // start of a new entry when the document has no bullet characters.
+      sections[current]!.push(line.replace(/\s+$/, ''));
     } else {
       header.push(trimmed);
     }

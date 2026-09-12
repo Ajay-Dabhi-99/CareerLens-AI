@@ -25,6 +25,12 @@ interface PositionedItem {
 }
 
 /**
+ * Horizontal distance treated as one level of indentation, in PDF points.
+ * Resume bullets typically sit 12-20pt inside their heading.
+ */
+const INDENT_UNIT_POINTS = 12;
+
+/**
  * Rebuilds page text from item positions rather than the order the PDF happens
  * to draw them in.
  *
@@ -53,29 +59,44 @@ function layoutToText(items: PositionedItem[]): string {
     else lines.push([item]);
   }
 
-  return lines
-    .map((line) => {
-      const ordered = [...line].sort((a, b) => a.x - b.x);
-      let text = '';
+  const rendered = lines.map((line) => {
+    const ordered = [...line].sort((a, b) => a.x - b.x);
+    let text = '';
 
-      for (let index = 0; index < ordered.length; index += 1) {
-        const item = ordered[index]!;
-        if (index === 0) {
-          text = item.str;
-          continue;
-        }
-
-        const previous = ordered[index - 1]!;
-        const gap = item.x - (previous.x + previous.width);
-        // Roughly a quarter of the glyph height is a reliable word separator;
-        // anything tighter is the same word split across items.
-        const spaceThreshold = Math.max(1, previous.height * 0.25);
-        const needsSpace = gap > spaceThreshold && !text.endsWith(' ') && !item.str.startsWith(' ');
-
-        text += needsSpace ? ` ${item.str}` : item.str;
+    for (let index = 0; index < ordered.length; index += 1) {
+      const item = ordered[index]!;
+      if (index === 0) {
+        text = item.str;
+        continue;
       }
 
-      return text;
+      const previous = ordered[index - 1]!;
+      const gap = item.x - (previous.x + previous.width);
+      // Roughly a quarter of the glyph height is a reliable word separator;
+      // anything tighter is the same word split across items.
+      const spaceThreshold = Math.max(1, previous.height * 0.25);
+      const needsSpace = gap > spaceThreshold && !text.endsWith(' ') && !item.str.startsWith(' ');
+
+      text += needsSpace ? ` ${item.str}` : item.str;
+    }
+
+    return { text, x: ordered[0]?.x ?? 0 };
+  });
+
+  /**
+   * Preserve indentation as leading spaces.
+   *
+   * Many resumes draw their bullet glyphs as vector shapes rather than text, so
+   * nothing marks a bullet in the extracted characters at all. Indentation is
+   * then the only remaining signal that a line continues an entry rather than
+   * starting a new one, and discarding it collapses every role into one.
+   */
+  const leftMargin = Math.min(...rendered.map((line) => line.x));
+
+  return rendered
+    .map(({ text, x }) => {
+      const indentSteps = Math.max(0, Math.round((x - leftMargin) / INDENT_UNIT_POINTS));
+      return `${' '.repeat(Math.min(indentSteps, 8) * 2)}${text}`;
     })
     .join('\n');
 }
@@ -194,9 +215,15 @@ export function normalizeExtractedText(raw: string): string {
     .replace(LONG_DASHES, '-')
     .replace(/\n{3,}/g, '\n\n')
     .split('\n')
-    .map((line) => line.replace(/[ \t]+/g, ' ').trim());
+    // Leading whitespace is meaningful — it is how an un-glyphed bullet is
+    // recognised — so only runs *within* the line are collapsed.
+    .map((line) => {
+      const indent = /^ */.exec(line)?.[0] ?? '';
+      const body = line.slice(indent.length).replace(/[ \t]+/g, ' ').trimEnd();
+      return body === '' ? '' : `${indent}${body}`;
+    });
 
-  return collapseUniformDoubleSpacing(cleaned).join('\n').trim();
+  return collapseUniformDoubleSpacing(cleaned).join('\n').replace(/^\n+|\s+$/g, '');
 }
 
 export async function extractResumeText(
