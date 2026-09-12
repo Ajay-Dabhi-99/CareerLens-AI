@@ -25,6 +25,7 @@ import {
 import {
   createResumeEditorRepository,
   registerEditorRoutes,
+  registerRewriteRoutes,
   type ResumeEditorRepository,
 } from './modules/editor/index.js';
 import { createGeminiProvider, DEFAULT_MODEL } from './services/ai/index.js';
@@ -162,11 +163,10 @@ export async function buildApp(
     model: env.GEMINI_MODEL ?? DEFAULT_MODEL,
   });
 
-  registerEditorRoutes(app, {
-    resumes: options.editorResumes ?? createResumeEditorRepository(supabase!),
-    resumeFiles,
-    storage,
-  });
+  const editorResumes = options.editorResumes ?? createResumeEditorRepository(supabase!);
+
+  registerEditorRoutes(app, { resumes: editorResumes, resumeFiles, storage });
+  registerRewriteRoutes(app, { resumes: editorResumes });
 
   return app;
 }

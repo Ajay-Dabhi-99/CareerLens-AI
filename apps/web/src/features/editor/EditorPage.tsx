@@ -17,6 +17,7 @@ import {
 } from '@/features/editor/api/editorApi';
 import { useAutosave } from '@/features/editor/hooks/useAutosave';
 import { useUndoable } from '@/features/editor/hooks/useUndoable';
+import { useRewriteController } from '@/features/editor/hooks/useRewrite';
 import { SaveIndicator } from '@/features/editor/components/SaveIndicator';
 import { Field } from '@/features/editor/components/EntryCard';
 import {
@@ -69,6 +70,10 @@ export function EditorPage() {
     canUndo,
     canRedo,
   } = useUndoable<ResumeData | null>(null);
+
+  // One rewrite at a time anywhere on the page, so only one AI call can ever
+  // be in flight against a small free-tier quota.
+  const rewrite = useRewriteController(id);
 
   /**
    * The revision the next save will be based on. Kept in a ref rather than
@@ -331,7 +336,11 @@ export function EditorPage() {
               <CardTitle className="text-base">Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <SummarySection value={data.summary} onChange={(summary) => edit({ summary })} />
+              <SummarySection
+                value={data.summary}
+                onChange={(summary) => edit({ summary })}
+                rewrite={rewrite}
+              />
             </CardContent>
           </Card>
 
@@ -343,6 +352,7 @@ export function EditorPage() {
               <ExperienceSection
                 experience={data.experience}
                 onChange={(experience) => edit({ experience })}
+                rewrite={rewrite}
               />
             </CardContent>
           </Card>
@@ -352,7 +362,11 @@ export function EditorPage() {
               <CardTitle className="text-base">Projects</CardTitle>
             </CardHeader>
             <CardContent>
-              <ProjectsSection projects={data.projects} onChange={(projects) => edit({ projects })} />
+              <ProjectsSection
+                projects={data.projects}
+                onChange={(projects) => edit({ projects })}
+                rewrite={rewrite}
+              />
             </CardContent>
           </Card>
 
@@ -361,7 +375,11 @@ export function EditorPage() {
               <CardTitle className="text-base">Skills</CardTitle>
             </CardHeader>
             <CardContent>
-              <SkillsSection skills={data.skills} onChange={(skills) => edit({ skills })} />
+              <SkillsSection
+                skills={data.skills}
+                onChange={(skills) => edit({ skills })}
+                rewrite={rewrite}
+              />
             </CardContent>
           </Card>
 

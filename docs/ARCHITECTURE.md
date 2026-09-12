@@ -261,6 +261,32 @@ ProseMirror's history.
 The score is recomputed from the draft on every save and returned with it, so the number
 always describes the text the server actually holds rather than the file once uploaded.
 
+## AI editing (Phase 9)
+
+`POST /api/editor/resumes/:id/rewrite` returns two or three options for a summary, a bullet,
+a project or the skills grouping. **The route cannot write to the resume.** It reads the
+draft for context and returns suggestions; applying one is a separate save the user
+triggers. "Never overwrite the user's content automatically" is therefore a property of the
+design rather than a promise in a comment, and there is a test asserting no write path
+exists.
+
+**Accepted AI text is marked as such.** A bullet taken from a suggestion is stored with
+`source: 'ai'` and `verified: false` — the fields the domain model has always had for this —
+and the editor shows an "AI · check this" badge until the user confirms it. Losing that
+distinction is how somebody ends up defending an invented achievement in an interview.
+
+**Options that need a missing fact are flagged, not hidden.** The prompt forbids inventing
+detail, so a stronger line that would need a number the resume does not contain comes back
+with `requiresVerification: true` and a placeholder. The panel marks it clearly and still
+offers it: the user may well have the figure to hand, and withholding the suggestion would
+be a worse answer than labelling it.
+
+**Quota control.** One rewrite may be open at a time anywhere in the editor, so at most one
+call is ever in flight. Identical text is answered from an in-memory cache (10 minutes,
+200 entries, keyed by user and a hash of the text — resume content should not sit in a
+process-wide map in readable form) so asking twice about something unchanged costs once. The
+per-user limit is 20 an hour.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

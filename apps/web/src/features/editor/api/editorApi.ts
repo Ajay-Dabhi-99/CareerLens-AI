@@ -155,6 +155,32 @@ export async function saveDraft(
   }
 }
 
+export type RewriteTarget = 'summary' | 'bullet' | 'project' | 'skills';
+
+export interface RewriteOption {
+  text: string;
+  explanation: string;
+  requiresVerification: boolean;
+}
+
+/**
+ * Asks for rewrite options. Returns suggestions only — this endpoint has no
+ * ability to change the resume, so applying one is always a separate save the
+ * user triggers.
+ */
+export async function requestRewrite(
+  resumeId: string,
+  target: RewriteTarget,
+  currentText: string,
+): Promise<{ options: RewriteOption[]; cached: boolean }> {
+  const response = await authedFetch(`/api/editor/resumes/${resumeId}/rewrite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target, currentText }),
+  });
+  return (await response.json()) as { options: RewriteOption[]; cached: boolean };
+}
+
 export async function deleteEditorResume(id: string): Promise<void> {
   await authedFetch(`/api/editor/resumes/${id}`, { method: 'DELETE' });
 }

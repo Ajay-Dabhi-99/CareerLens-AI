@@ -4,6 +4,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { EntryCard, Field } from '@/features/editor/components/EntryCard';
 import { BulletListField, RichTextField } from '@/features/editor/components/RichTextField';
+import { RewriteButton, RewritePanel } from '@/features/editor/components/RewritePanel';
+import type { RewriteController } from '@/features/editor/hooks/useRewrite';
 import type {
   Education,
   Experience,
@@ -31,22 +33,116 @@ function mergeBullets(existing: ResumeBullet[], texts: string[]): ResumeBullet[]
   });
 }
 
+/**
+ * Replaces one bullet with AI-written text, recording where it came from.
+ *
+ * `source: 'ai'` and `verified: false` are what those fields exist for. A line
+ * the model wrote is not yet a claim the candidate has stood behind, and losing
+ * that distinction is how someone ends up defending an invented achievement in
+ * an interview.
+ */
+function replaceBulletWithAi(bullets: ResumeBullet[], index: number, text: string): ResumeBullet[] {
+  return bullets.map((bullet, i) =>
+    i === index ? { ...bullet, text, source: 'ai' as const, verified: false } : bullet,
+  );
+}
+
+/**
+ * The bullets of one entry, each offering a rewrite.
+ *
+ * Separate from the rich-text editor above it because the editor holds all the
+ * bullets as one document, and a rewrite applies to one line.
+ */
+function BulletRewriteRows({
+  keyPrefix,
+  bullets,
+  rewrite,
+  onAccept,
+}: {
+  keyPrefix: string;
+  bullets: ResumeBullet[];
+  rewrite: RewriteController;
+  onAccept: (index: number, text: string) => void;
+}) {
+  if (bullets.length === 0) return null;
+
+  return (
+    <ul className="space-y-1.5">
+      {bullets.map((bullet, index) => {
+        const key = `${keyPrefix}-bullet-${bullet.id}`;
+
+        return (
+          <li key={bullet.id} className="space-y-1.5">
+            <div className="flex items-start gap-2">
+              <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {bullet.text}
+              </p>
+              {bullet.source === 'ai' && !bullet.verified ? (
+                <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
+                  AI · check this
+                </span>
+              ) : null}
+              <RewriteButton
+                label="Improve"
+                disabled={rewrite.state.kind === 'loading' && rewrite.activeKey !== key}
+                onClick={() =>
+                  rewrite.start(key, 'bullet', bullet.text, (text) => onAccept(index, text))
+                }
+              />
+            </div>
+
+            {rewrite.activeKey === key ? (
+              <RewritePanel
+                state={rewrite.state}
+                currentText={rewrite.currentText}
+                onAccept={rewrite.accept}
+                onDismiss={rewrite.dismiss}
+                onRetry={rewrite.retry}
+              />
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function SummarySection({
   value,
   onChange,
+  rewrite,
 }: {
   value: string;
   onChange: (next: string) => void;
+  rewrite: RewriteController;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor="summary-field">Professional summary</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor="summary-field">Professional summary</Label>
+        <RewriteButton
+          onClick={() => rewrite.start('summary', 'summary', value, onChange)}
+          disabled={rewrite.state.kind === 'loading' && rewrite.activeKey !== 'summary'}
+        />
+      </div>
+
       <RichTextField
         ariaLabel="Professional summary"
         value={value}
         onChange={onChange}
         placeholder="Two or three lines on what you do and the results you get."
       />
+
+      {rewrite.activeKey === 'summary' ? (
+        <RewritePanel
+          state={rewrite.state}
+          currentText={rewrite.currentText}
+          onAccept={rewrite.accept}
+          onDismiss={rewrite.dismiss}
+          onRetry={rewrite.retry}
+        />
+      ) : null}
+
       <p className="text-xs text-muted-foreground">
         Lead with what you are, not what you want. Specifics beat adjectives.
       </p>
@@ -57,9 +153,11 @@ export function SummarySection({
 export function ExperienceSection({
   experience,
   onChange,
+  rewrite,
 }: {
   experience: Experience[];
   onChange: (next: Experience[]) => void;
+  rewrite: RewriteController;
 }) {
   function update(index: number, patch: Partial<Experience>) {
     onChange(experience.map((role, i) => (i === index ? { ...role, ...patch } : role)));
@@ -119,12 +217,20 @@ export function ExperienceSection({
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label>What you did</Label>
             <BulletListField
               ariaLabel={`Achievements for ${role.title || 'this role'}`}
               bullets={role.bullets.map((bullet) => bullet.text)}
               onChange={(texts) => update(index, { bullets: mergeBullets(role.bullets, texts) })}
+            />
+            <BulletRewriteRows
+              keyPrefix={role.id}
+              bullets={role.bullets}
+              rewrite={rewrite}
+              onAccept={(bulletIndex, text) =>
+                update(index, { bullets: replaceBulletWithAi(role.bullets, bulletIndex, text) })
+              }
             />
           </div>
         </EntryCard>
@@ -149,9 +255,11 @@ export function ExperienceSection({
 export function ProjectsSection({
   projects,
   onChange,
+  rewrite,
 }: {
   projects: Project[];
   onChange: (next: Project[]) => void;
+  rewrite: RewriteController;
 }) {
   function update(index: number, patch: Partial<Project>) {
     onChange(projects.map((project, i) => (i === index ? { ...project, ...patch } : project)));
@@ -182,12 +290,22 @@ export function ProjectsSection({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label>What it does and what you built</Label>
             <BulletListField
               ariaLabel={`Details for ${project.name || 'this project'}`}
               bullets={project.bullets.map((bullet) => bullet.text)}
               onChange={(texts) => update(index, { bullets: mergeBullets(project.bullets, texts) })}
+            />
+            <BulletRewriteRows
+              keyPrefix={project.id}
+              bullets={project.bullets}
+              rewrite={rewrite}
+              onAccept={(bulletIndex, text) =>
+                update(index, {
+                  bullets: replaceBulletWithAi(project.bullets, bulletIndex, text),
+                })
+              }
             />
           </div>
         </EntryCard>
@@ -204,19 +322,82 @@ export function ProjectsSection({
   );
 }
 
+/** One line per group, which is how the model is asked to read them back. */
+function skillsAsText(skills: SkillGroup[]): string {
+  return skills.map((group) => `${group.category}: ${group.skills.join(', ')}`).join('\n');
+}
+
+/**
+ * Parses grouped skills back out of the model's reply.
+ *
+ * Anything that does not look like "Group: a, b, c" is skipped rather than
+ * guessed at: a malformed line silently becoming a skill group would put words
+ * on someone's resume that nobody chose.
+ */
+function skillsFromText(text: string, existing: SkillGroup[]): SkillGroup[] {
+  const groups: SkillGroup[] = [];
+
+  text.split('\n').forEach((line, index) => {
+    const at = line.indexOf(':');
+    if (at <= 0) return;
+
+    const category = line.slice(0, at).trim().replace(/^[-*•]\s*/, '');
+    const items = line
+      .slice(at + 1)
+      .split(',')
+      .map((skill) => skill.trim())
+      .filter((skill) => skill.length > 0);
+
+    if (!category || items.length === 0) return;
+    groups.push({ id: existing[index]?.id ?? newId('s'), category, skills: items });
+  });
+
+  return groups;
+}
+
 export function SkillsSection({
   skills,
   onChange,
+  rewrite,
 }: {
   skills: SkillGroup[];
   onChange: (next: SkillGroup[]) => void;
+  rewrite: RewriteController;
 }) {
   function update(index: number, patch: Partial<SkillGroup>) {
     onChange(skills.map((group, i) => (i === index ? { ...group, ...patch } : group)));
   }
 
+  function acceptSkills(text: string) {
+    const parsed = skillsFromText(text, skills);
+    // Refusing an unparseable reply is better than replacing a working skills
+    // section with nothing.
+    if (parsed.length > 0) onChange(parsed);
+  }
+
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Grouping matters as much as coverage: filters read the words, people read the shape.
+        </p>
+        <RewriteButton
+          label="Review grouping"
+          onClick={() => rewrite.start('skills', 'skills', skillsAsText(skills), acceptSkills)}
+          disabled={rewrite.state.kind === 'loading' && rewrite.activeKey !== 'skills'}
+        />
+      </div>
+
+      {rewrite.activeKey === 'skills' ? (
+        <RewritePanel
+          state={rewrite.state}
+          currentText={rewrite.currentText}
+          onAccept={rewrite.accept}
+          onDismiss={rewrite.dismiss}
+          onRetry={rewrite.retry}
+        />
+      ) : null}
+
       {skills.map((group, index) => (
         <EntryCard
           key={group.id}

@@ -43,6 +43,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   undo/redo and a live score. The original parse is kept immutable so any edit can be
   reverted.
 
+- **Phase 9 — AI editing:** rewrite actions for the summary, individual bullets, projects
+  and skills grouping. Options are shown for a choice and never applied automatically;
+  accepted AI text is marked unverified until the user confirms it.
+
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
 it PostgREST keeps serving a cached schema and the API reports the new tables as missing.
