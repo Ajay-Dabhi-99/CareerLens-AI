@@ -140,9 +140,28 @@ interface AIProvider {
 }
 ```
 
-`GeminiProvider` (added in Phase 6) implements this behind the interface. Every AI response
-must be validated against the matching Zod schema in `packages/validation/src/ai.ts` before
-it is trusted.
+`GeminiProvider` (`apps/api/src/services/ai/`) implements this behind the interface, and is
+reached through `app.ai`. Every AI response is validated against the matching Zod schema in
+`packages/validation/src/ai.ts` before it is trusted — the model is *asked* for a shape via
+Gemini's `responseSchema`, but the reply is parsed and validated regardless.
+
+**Prompt injection.** Uploaded resumes are attacker-controlled. The system instruction
+declares the resume untrusted data and the content is fenced in explicit markers, so text
+such as "ignore previous instructions" is reported as something odd the candidate wrote
+rather than obeyed (verified against the live API). The deeper defence is structural: the
+score comes from the deterministic engine, never the model, so even a successful injection
+cannot change anyone's rating.
+
+**Data minimisation.** `resumeForPrompt` sends only resume content — no row ids, no owning
+user, no file metadata. Logs record the operation and error type, never resume text.
+
+**Free-tier reality.** Quotas are per-model and small: `gemini-3.8-flash` allowed 20
+requests *per day* during development, and 503 "high demand" responses were common across
+every model. Retries are therefore load-bearing, and they distinguish three cases: server
+congestion backs off exponentially with jitter, malformed output retries almost immediately
+(waiting does not improve JSON validity), and quota exhaustion honours the API's stated
+`retryDelay` or fails fast rather than spending more quota. `GEMINI_MODEL` is env-configurable
+so a retirement or quota change is a config change, not a deploy.
 
 ## Versioning model
 

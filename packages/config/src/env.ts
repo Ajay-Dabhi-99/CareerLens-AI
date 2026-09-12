@@ -11,6 +11,12 @@ export const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_ANON_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
+  /**
+   * Overridable because Google retires models on its own schedule — a pinned
+   * default went end-of-life during development. Changing this is a config
+   * change, not a deploy.
+   */
+  GEMINI_MODEL: z.string().default('gemini-3.5-flash-lite'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
 });
 

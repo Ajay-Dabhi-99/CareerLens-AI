@@ -17,17 +17,30 @@ import {
   type AnonymousSessionStore,
   type ResumeFileRepository,
 } from './modules/resume/index.js';
+import { createGeminiProvider } from './services/ai/index.js';
+import type { AIProvider } from '@career-lens-ai/types';
 import { createSupabaseAdminClient } from './services/supabase/client.js';
 import { createResumeStorage, type ResumeStorage } from './services/supabase/storage.js';
 import { MAX_UPLOAD_BYTES } from './services/upload/fileValidation.js';
 import { PublicError, SetupError, asSetupErrorIfMissingTable } from './utils/errors.js';
 
 export interface BuildAppOptions {
-  /** Overrides let tests run without a live Supabase project. */
+  /** Overrides let tests run without a live Supabase project or AI quota. */
   authVerifier?: AuthVerifier;
   anonymousSessions?: AnonymousSessionStore;
   resumeFiles?: ResumeFileRepository;
   storage?: ResumeStorage;
+  aiProvider?: AIProvider;
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /**
+     * Routes depend on this interface, never on the Gemini SDK, so the provider
+     * can be swapped or stubbed without touching route code.
+     */
+    ai: AIProvider;
+  }
 }
 
 export async function buildApp(
@@ -100,6 +113,19 @@ export async function buildApp(
     service: 'career-lens-ai-api',
     timestamp: new Date().toISOString(),
   }));
+
+  app.decorate(
+    'ai',
+    options.aiProvider ??
+      createGeminiProvider({
+        apiKey: env.GEMINI_API_KEY,
+        model: env.GEMINI_MODEL,
+        logger: {
+          warn: (details, message) => app.log.warn(details, message),
+          error: (details, message) => app.log.error(details, message),
+        },
+      }),
+  );
 
   registerAuthRoutes(app);
 

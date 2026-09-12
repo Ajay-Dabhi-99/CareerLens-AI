@@ -8,6 +8,7 @@ const testEnv = {
   SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
   SUPABASE_ANON_KEY: 'test-anon-key',
   GEMINI_API_KEY: 'test-gemini-key',
+  GEMINI_MODEL: 'gemini-3.8-flash',
   CORS_ORIGIN: 'http://localhost:5173',
 };
 
