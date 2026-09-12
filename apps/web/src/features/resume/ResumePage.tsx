@@ -11,8 +11,10 @@ import {
   deleteResumeFile,
   listResumeFiles,
   uploadResumeFile,
+  type FullScore,
   type ResumeFile,
 } from '@/features/resume/api/resumeApi';
+import { FullScoreResult } from '@/features/resume/components/FullScoreResult';
 
 type ListState =
   | { kind: 'loading' }
@@ -31,6 +33,7 @@ export function ResumePage() {
   const [progress, setProgress] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [score, setScore] = useState<FullScore | null>(null);
 
   const load = useCallback(() => {
     setList({ kind: 'loading' });
@@ -51,9 +54,12 @@ export function ResumePage() {
       setUploadError(null);
       setProgress(0);
       try {
-        await uploadResumeFile(file, setProgress);
+        const result = await uploadResumeFile(file, setProgress);
         setPending(null);
         setProgress(null);
+        // The server scores every authenticated upload; showing it is the whole
+        // point of being signed in.
+        setScore(result.score);
         load();
       } catch (error) {
         setProgress(null);
@@ -149,6 +155,8 @@ export function ResumePage() {
           ) : null}
         </CardContent>
       </Card>
+
+      {score ? <FullScoreResult score={score} /> : null}
 
       {list.kind === 'loading' ? <LoadingState rows={3} /> : null}
 

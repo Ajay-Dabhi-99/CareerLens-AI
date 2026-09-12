@@ -1,27 +1,10 @@
-import type { CSSProperties } from 'react';
 import { AlertTriangle, CheckCircle2, Info, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScoreRing, barTone } from '@/components/ScoreRing';
 import { cn } from '@/lib/utils';
 import type { AtsFinding, PublicScore } from '@/features/quick-analysis/api/quickAnalysisApi';
-
-const RADIUS = 56;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
-function scoreTone(score: number): { ring: string; text: string; label: string } {
-  if (score >= 80) return { ring: 'stroke-success', text: 'text-success', label: 'Strong' };
-  if (score >= 60) return { ring: 'stroke-primary', text: 'text-primary', label: 'Decent' };
-  if (score >= 40) return { ring: 'stroke-warning', text: 'text-warning', label: 'Needs work' };
-  return { ring: 'stroke-destructive', text: 'text-destructive', label: 'Needs a rework' };
-}
-
-function barTone(score: number): string {
-  if (score >= 80) return 'bg-success';
-  if (score >= 60) return 'bg-primary';
-  if (score >= 40) return 'bg-warning';
-  return 'bg-destructive';
-}
 
 function FindingRow({ finding }: { finding: AtsFinding }) {
   const Icon =
@@ -42,9 +25,6 @@ function FindingRow({ finding }: { finding: AtsFinding }) {
 }
 
 export function ScoreResult({ score }: { score: PublicScore }) {
-  const tone = scoreTone(score.finalScore);
-  const offset = CIRCUMFERENCE * (1 - score.finalScore / 100);
-
   return (
     <div className="space-y-4" data-testid="score-result">
       <Card>
@@ -58,36 +38,7 @@ export function ScoreResult({ score }: { score: PublicScore }) {
 
         <CardContent className="space-y-6">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-            <div className="relative shrink-0">
-              <svg width="136" height="136" viewBox="0 0 136 136" aria-hidden="true">
-                <circle cx="68" cy="68" r={RADIUS} fill="none" strokeWidth="10" className="stroke-muted" />
-                <circle
-                  cx="68"
-                  cy="68"
-                  r={RADIUS}
-                  fill="none"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  className={cn('animate-ring', tone.ring)}
-                  style={
-                    {
-                      strokeDasharray: CIRCUMFERENCE,
-                      strokeDashoffset: offset,
-                      transform: 'rotate(-90deg)',
-                      transformOrigin: '68px 68px',
-                      '--ring-circumference': `${CIRCUMFERENCE}`,
-                      '--ring-offset': `${offset}`,
-                    } as CSSProperties
-                  }
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-semibold tabular-nums" data-testid="final-score">
-                  {score.finalScore}
-                </span>
-                <span className={cn('text-xs font-medium', tone.text)}>{tone.label}</span>
-              </div>
-            </div>
+            <ScoreRing score={score.finalScore} />
 
             <ul className="w-full flex-1 space-y-2.5">
               {score.categories.map((category) => (

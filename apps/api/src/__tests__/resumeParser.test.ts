@@ -70,10 +70,39 @@ describe('matchSectionHeading', () => {
     expect(matchSectionHeading(line)).toBe(expected);
   });
 
-  it('does not treat a sentence beginning with a keyword as a heading', () => {
-    expect(
-      matchSectionHeading('Experience building distributed systems across three teams'),
-    ).toBeNull();
+  it.each([
+    'Technical Skills & Tools',
+    'Core Competencies',
+    'Areas of Expertise',
+    'IT Skills',
+    'Computer Skills',
+    'Technical Proficiencies',
+    'Tools & Technologies',
+    'Skills Summary',
+    'Professional Skills',
+  ])('recognises the skills section written as %s', (heading) => {
+    // Real resumes phrase this a dozen ways; an exact-match list missed most of
+    // them and dropped the whole section.
+    expect(matchSectionHeading(heading)).toBe('skills');
+  });
+
+  it.each([
+    ['Employment History', 'experience'],
+    ['Career History', 'experience'],
+    ['Educational Qualifications', 'education'],
+    ['Licenses & Certifications', 'certifications'],
+    ['Career Objective', 'summary'],
+  ])('recognises %s as %s', (heading, expected) => {
+    expect(matchSectionHeading(heading)).toBe(expected);
+  });
+
+  it.each([
+    'Experience building distributed systems across three teams',
+    'Led the skills matrix rollout for the platform group',
+    'Responsible for education and onboarding of new joiners.',
+    '- Built a fraud detection pipeline processing 2TB daily',
+  ])('does not treat body text as a heading: %s', (line) => {
+    expect(matchSectionHeading(line)).toBeNull();
   });
 
   it('ignores unrelated lines', () => {
@@ -101,6 +130,25 @@ describe('detectSections', () => {
     const { header, order } = detectSections('Jane Doe\nSome freeform text');
     expect(order).toHaveLength(0);
     expect(header).toHaveLength(2);
+  });
+
+  it('recovers a section whose heading shares a line with its content', () => {
+    // PDF extraction produces this whenever the heading and first entry sit on
+    // the same visual line. Treated as body text, the section vanished entirely.
+    const { sections, order } = detectSections(
+      'Jane Doe\njane@example.com\n\nTECHNICAL SKILLS: Java, Python, SQL\n\nEDUCATION\nBSc, Leeds',
+    );
+
+    expect(order).toContain('skills');
+    expect(sections.skills?.[0]).toBe('Java, Python, SQL');
+  });
+
+  it('treats a labelled line inside the skills section as a group, not a new heading', () => {
+    const { sections } = detectSections(
+      'SKILLS\nLanguages: TypeScript, Go\nTools: Docker, Terraform',
+    );
+
+    expect(sections.skills).toEqual(['Languages: TypeScript, Go', 'Tools: Docker, Terraform']);
   });
 });
 

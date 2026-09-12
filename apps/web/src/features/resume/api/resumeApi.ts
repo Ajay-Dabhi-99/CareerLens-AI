@@ -18,18 +18,39 @@ export async function listResumeFiles(): Promise<ResumeFile[]> {
   return body.resumeFiles;
 }
 
+export interface AtsFinding {
+  id: string;
+  severity: 'good' | 'warning' | 'critical';
+  message: string;
+}
+
+/** Signed-in users receive every finding, unlike the gated anonymous summary. */
+export interface FullScore {
+  finalScore: number;
+  categories: Array<{
+    category: string;
+    weight: number;
+    score: number;
+    findings: AtsFinding[];
+  }>;
+}
+
+export interface UploadResult {
+  resumeFile: ResumeFile;
+  score: FullScore;
+}
+
 export async function uploadResumeFile(
   file: File,
   onProgress?: (percent: number) => void,
-): Promise<ResumeFile> {
+): Promise<UploadResult> {
   const accessToken = await getAccessToken();
-  const body = await uploadFile<{ resumeFile: ResumeFile }>({
+  return uploadFile<UploadResult>({
     path: '/api/resumes',
     file,
     accessToken,
     onProgress,
   });
-  return body.resumeFile;
 }
 
 export async function deleteResumeFile(id: string): Promise<void> {
