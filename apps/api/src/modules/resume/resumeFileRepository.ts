@@ -101,8 +101,20 @@ export function createResumeFileRepository(client: SupabaseClient): ResumeFileRe
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (error || !data) return null;
-      return toRecord(data as ResumeFileRow);
+      /*
+       * A missing row and a row owned by someone else must stay
+       * indistinguishable, so both return null and the route answers 404 — that
+       * is what stops this being used to probe for other users' resume ids.
+       *
+       * A failed query is a third thing, and must not masquerade as either: it
+       * means we do not know, and reporting "not found" would send the user
+       * hunting for a file that is sitting there safely.
+       */
+      if (error) {
+        throw new Error(`Could not read the resume file: ${error.message}`);
+      }
+
+      return data ? toRecord(data as ResumeFileRow) : null;
     },
 
     async delete(id, userId) {

@@ -283,6 +283,48 @@ describe('AI resume review', () => {
     await app.close();
   });
 
+  it('reports an un-migrated database as a setup problem, not as "no review"', async () => {
+    // This is the bug that shipped: the repository swallowed the error and the
+    // endpoint cheerfully answered "no review yet", which both hid the real
+    // problem and turned every request into a cache miss — spending an AI call
+    // each time on exactly the setup where nothing could be saved.
+    vi.mocked(deps.reviews.findForFile).mockRejectedValue(
+      new Error("Could not find the table 'public.resume_reviews' in the schema cache"),
+    );
+
+    const app = await buildApp(testEnv, deps);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/resumes/file-1/review',
+      headers: AUTH_HEADER,
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json().review).toBeUndefined();
+
+    await app.close();
+  });
+
+  it('does not spend an AI call when the review table cannot be read', async () => {
+    vi.mocked(deps.reviews.findForFile).mockRejectedValue(
+      new Error("Could not find the table 'public.resume_reviews' in the schema cache"),
+    );
+
+    const app = await buildApp(testEnv, deps);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/resumes/file-1/review',
+      headers: AUTH_HEADER,
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(deps.aiProvider.analyzeResume).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
   it('reports no review rather than failing when none has been generated', async () => {
     const app = await buildApp(testEnv, deps);
 

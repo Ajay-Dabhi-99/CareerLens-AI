@@ -60,8 +60,18 @@ export function createResumeReviewRepository(client: SupabaseClient): ResumeRevi
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (error || !data) return null;
-      return toRecord(data as ResumeReviewRow);
+      /*
+       * "No review yet" and "the query failed" must not collapse into the same
+       * answer. Returning null on an error reported an un-migrated database as
+       * an empty result, which hid the real problem and — worse — turned every
+       * request into a cache miss, spending a Gemini call each time on exactly
+       * the setup where nothing could be saved.
+       */
+      if (error) {
+        throw new Error(`Could not read the review: ${error.message}`);
+      }
+
+      return data ? toRecord(data as ResumeReviewRow) : null;
     },
 
     async save(input) {
