@@ -63,8 +63,9 @@ export function FullScoreResult({ score }: { score: FullScore }) {
         <CardHeader>
           <CardTitle>Resume Health score</CardTitle>
           <CardDescription>
-            Weighted across eight categories. An ATS-style score, not the exact number any one
-            company&apos;s system produces.
+            How well this document communicates your experience — not a judgement of the
+            experience itself. Compare it against your own next version rather than against
+            anyone else&apos;s.
           </CardDescription>
         </CardHeader>
 

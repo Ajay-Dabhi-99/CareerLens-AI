@@ -231,6 +231,56 @@ describe('scoring model', () => {
     expect(impact?.notAssessed).toBeUndefined();
     expect(impact?.score).toBeLessThan(40);
   });
+
+  it('scores a long career with no evidence below the same resume written by a junior', () => {
+    /*
+     * The same words, the same sections, the same everything except the dates.
+     * Seniority must raise the bar, never the score — a score that climbed with
+     * years would reassure exactly the person whose resume is not landing.
+     */
+    const dutiesOnly = (startDate: string): Resume => ({
+      ...emptyResume(),
+      personal: { fullName: 'Alex Doe', email: 'alex@example.com', phone: '+44 7700 900123' },
+      skills: [{ id: 's1', category: 'Languages', skills: ['Java', 'Go'] }],
+      experience: [
+        {
+          id: 'e1',
+          title: 'Engineer',
+          company: 'BigCorp',
+          startDate,
+          current: true,
+          bullets: [
+            bullet('Built and maintained internal services for the platform team'),
+            bullet('Delivered features across the reporting and billing areas'),
+          ],
+        },
+      ],
+    });
+
+    const junior = scoreResume(dutiesOnly('Jan 2025'));
+    const seasoned = scoreResume(dutiesOnly('Jan 2014'));
+
+    expect(seasoned.finalScore).toBeLessThan(junior.finalScore);
+  });
+
+  it('does not apply the expectation gap to a short history', () => {
+    const junior: Resume = {
+      ...emptyResume(),
+      experience: [
+        {
+          id: 'e1',
+          title: 'Engineer',
+          company: 'BigCorp',
+          startDate: 'Jan 2025',
+          current: true,
+          bullets: [bullet('Built and maintained internal services for the platform team')],
+        },
+      ],
+    };
+
+    const ids = scoreResume(junior).categories.flatMap((c) => c.findings.map((f) => f.id));
+    expect(ids).not.toContain('impact.experience-without-evidence');
+  });
 });
 
 describe('structure analyzer', () => {
@@ -371,6 +421,49 @@ describe('impact analyzer', () => {
 
   it('scores zero when there are no bullets to assess', () => {
     expect(analyzeImpact(emptyResume()).score).toBe(0);
+  });
+
+  it('flags a long career described without a single measurable outcome', () => {
+    const seasonedNoMetrics: Resume = {
+      ...emptyResume(),
+      experience: [
+        {
+          id: 'e1',
+          title: 'Principal Engineer',
+          company: 'BigCorp',
+          startDate: 'Jan 2014',
+          current: true,
+          bullets: [
+            bullet('Responsible for the architecture of the platform team'),
+            bullet('Worked on various services and helped with migrations'),
+          ],
+        },
+      ],
+    };
+
+    expect(analyzeImpact(seasonedNoMetrics).findings.map((f) => f.id)).toContain(
+      'impact.experience-without-evidence',
+    );
+  });
+
+  it('does not hold a graduate to the same expectation', () => {
+    const graduate: Resume = {
+      ...emptyResume(),
+      experience: [
+        {
+          id: 'e1',
+          title: 'Intern',
+          company: 'Startup',
+          startDate: 'Jun 2025',
+          current: true,
+          bullets: [bullet('Worked on the internal dashboard with the platform team')],
+        },
+      ],
+    };
+
+    expect(analyzeImpact(graduate).findings.map((f) => f.id)).not.toContain(
+      'impact.experience-without-evidence',
+    );
   });
 
   it.each([

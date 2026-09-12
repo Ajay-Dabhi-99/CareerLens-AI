@@ -47,6 +47,29 @@ function applyStuffingCeiling(weighted: number, categories: AtsCategoryResult[])
   return Math.round(capped);
 }
 
+/** Points deducted when a substantial career is described without a single outcome. */
+const EXPECTATION_GAP_PENALTY = 9;
+
+/**
+ * Lowers a resume whose claimed experience is not matched by evidence.
+ *
+ * Expectations rise with a longer history; credit does not. Someone years into
+ * a career listing only what they were assigned has undersold themselves more
+ * than a graduate doing the same, and this is the one place that difference can
+ * register — the impact category has already bottomed out at zero, so deducting
+ * there would leave the finding cosmetic.
+ *
+ * The adjustment is deliberately downward. A score that rose with seniority
+ * would reassure precisely the person whose resume is not landing interviews.
+ */
+function applyExpectationGap(score: number, categories: AtsCategoryResult[]): number {
+  const flagged = categories
+    .flatMap((category) => category.findings)
+    .some((f) => f.id === 'impact.experience-without-evidence');
+
+  return flagged ? Math.max(0, score - EXPECTATION_GAP_PENALTY) : score;
+}
+
 /**
  * Runs every category analyzer and combines them into the Resume Health score.
  *
@@ -78,7 +101,10 @@ export function scoreResume(resume: Resume, options: ScoreResumeOptions = {}): A
         totalWeight
       : 0;
 
-  const finalScore = applyStuffingCeiling(weighted, categories);
+  const finalScore = applyExpectationGap(
+    applyStuffingCeiling(weighted, categories),
+    categories,
+  );
 
   return {
     id: randomUUID(),

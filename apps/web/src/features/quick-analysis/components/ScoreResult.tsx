@@ -31,8 +31,9 @@ export function ScoreResult({ score }: { score: PublicScore }) {
         <CardHeader>
           <CardTitle>Your Resume Health score</CardTitle>
           <CardDescription>
-            Weighted across eight categories. This is an ATS-style score, not the exact number any
-            one company&apos;s system produces.
+            How well this document communicates your experience — not a judgement of the
+            experience itself. Weighted across eight categories, and ATS-style rather than the
+            exact number any one company&apos;s system produces.
           </CardDescription>
         </CardHeader>
 

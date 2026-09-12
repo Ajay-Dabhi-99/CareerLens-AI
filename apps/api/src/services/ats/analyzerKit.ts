@@ -48,6 +48,36 @@ export function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
+const YEAR_PATTERN = /\b(19|20)\d{2}\b/;
+
+/**
+ * Rough span of a career, in years, taken from the role dates that parsed.
+ *
+ * Used to calibrate expectations rather than to credit seniority: more is
+ * expected of a longer history, so the same bare bullets cost more. Returns 0
+ * when nothing datable was found, which keeps an unparsed resume from being
+ * held to a senior standard by accident.
+ */
+export function estimateYearsOfExperience(resume: Resume): number {
+  const years: number[] = [];
+  let hasCurrentRole = false;
+
+  for (const role of resume.experience) {
+    for (const value of [role.startDate, role.endDate]) {
+      const match = value ? YEAR_PATTERN.exec(value) : null;
+      if (match) years.push(Number(match[0]));
+    }
+    if (role.current) hasCurrentRole = true;
+  }
+
+  if (years.length === 0) return 0;
+
+  const earliest = Math.min(...years);
+  const latest = hasCurrentRole ? new Date().getFullYear() : Math.max(...years);
+
+  return Math.max(0, latest - earliest);
+}
+
 /** True when a resume has no meaningful content at all. */
 export function isEmptyResume(resume: Resume): boolean {
   return (

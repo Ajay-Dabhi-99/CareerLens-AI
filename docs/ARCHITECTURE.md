@@ -129,8 +129,21 @@ graduates and career changers are judged on evidence they do have.
 were each penalised locally, but the rest of a tidy resume could still carry the total. Two
 or more stuffing signals now cap the final score at 55.
 
-Benchmarked against six resumes spanning senior/quantified to unparseable, the usable range
-widened from 61-97 to 19-93.
+**Expectations scale with claimed experience; credit does not.** `estimateYearsOfExperience`
+reads the role dates, and a history of three years or more described without a single
+measurable outcome raises `impact.experience-without-evidence`, deducting 9 points from the
+final score. The deduction lands on the total rather than inside the impact category because
+such a resume has already scored zero there, which would make the finding cosmetic.
+
+The direction is deliberate. A seniority *bonus* would have been the obvious symmetry, and
+it is the wrong one: it would flatter a principal engineer whose resume reads as a job
+description, which is precisely the person who needs telling. A twelve-year career written
+without evidence now scores below a graduate's project work, because it communicates less.
+The UI states the frame directly — the score measures how well the document conveys the
+experience, not the experience itself.
+
+Benchmarked against seven resumes spanning senior/quantified to unparseable, the usable
+range widened from 61-97 to 19-93.
 
 Implemented in `apps/api/src/services/ats/` — one pure analyzer per category, combined by
 `scoreResume`. Every category returns a 0-100 score plus `AtsFinding[]`, each finding

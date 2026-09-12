@@ -1,6 +1,9 @@
 import type { AtsCategoryResult, Resume } from '@career-lens-ai/types';
 import { ATS_CATEGORY_WEIGHTS } from '@career-lens-ai/types';
-import { allBullets, clampScore, finding } from '../analyzerKit.js';
+import { allBullets, clampScore, estimateYearsOfExperience, finding } from '../analyzerKit.js';
+
+/** Past this many years, a resume with no measurable outcome is a bigger miss. */
+const EXPERIENCE_EXPECTATION_THRESHOLD = 3;
 
 /**
  * Percentages, currency, magnitudes with a unit, and standalone numbers.
@@ -63,6 +66,19 @@ export function analyzeImpact(resume: Resume): AtsCategoryResult {
   // Quantified outcomes carry most of the weight, with verb strength behind it.
   let score = Math.round(quantifiedRatio * 65 + strongRatio * 35);
 
+  /*
+   * Expectations scale with the length of the history, they do not become
+   * credit for it. Someone four years in describing only what they were
+   * assigned has understated themselves more than a graduate doing the same,
+   * so the same absence of metrics costs them more.
+   *
+   * This deliberately lowers such a resume rather than raising it. A score that
+   * flattered a long career would reassure exactly the person who most needs
+   * telling that their resume is not landing.
+   */
+  const years = estimateYearsOfExperience(resume);
+  const seasoned = years >= EXPERIENCE_EXPECTATION_THRESHOLD;
+
   if (quantified.length === 0) {
     findings.push(
       finding(
@@ -71,6 +87,19 @@ export function analyzeImpact(resume: Resume): AtsCategoryResult {
         'No bullet contains a measurable outcome. Numbers are the single biggest differentiator here.',
       ),
     );
+
+    if (seasoned) {
+      // The reduction is applied to the final score rather than here, because
+      // a resume with no metrics has already bottomed this category out and
+      // subtracting from zero would make the finding cosmetic.
+      findings.push(
+        finding(
+          'impact.experience-without-evidence',
+          'critical',
+          `Around ${years} years of experience are described without a single measurable result. At this stage reviewers expect outcomes, not responsibilities — and your work almost certainly produced some.`,
+        ),
+      );
+    }
   } else if (quantifiedRatio < 0.3) {
     findings.push(
       finding(
