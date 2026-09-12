@@ -39,9 +39,19 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   grounded in the stored file rather than anything the browser sends. Reviews are saved, so
   a resume is reviewed once and read back thereafter.
 
-**Database setup:** run the migrations in `supabase/migrations/` in order
-(`0001_phase3_uploads.sql`, then `0002_phase7_ai_reviews.sql`) in the Supabase SQL editor
-before starting the API.
+- **Phase 8 — Resume editor:** section-by-section editing with TipTap, debounced autosave,
+  undo/redo and a live score. The original parse is kept immutable so any edit can be
+  reverted.
+
+**Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
+editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
+it PostgREST keeps serving a cached schema and the API reports the new tables as missing.
+
+Check what has actually been applied:
+
+```bash
+npm run db:check
+```
 
 See `docs/ARCHITECTURE.md` for the full 19-phase build order.
 

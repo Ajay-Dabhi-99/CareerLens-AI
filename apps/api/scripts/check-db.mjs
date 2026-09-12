@@ -20,6 +20,8 @@ const EXPECTED = [
   { table: 'anonymous_analysis_sessions', migration: '0001_phase3_uploads.sql' },
   { table: 'resume_files', migration: '0001_phase3_uploads.sql' },
   { table: 'resume_reviews', migration: '0002_phase7_ai_reviews.sql' },
+  { table: 'resumes', migration: '0003_phase8_editor.sql' },
+  { table: 'resume_versions', migration: '0003_phase8_editor.sql' },
 ];
 
 function readEnv() {

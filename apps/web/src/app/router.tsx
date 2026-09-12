@@ -6,6 +6,7 @@ import { LandingPage } from '@/features/marketing';
 import { QuickAnalysisPage } from '@/features/quick-analysis';
 import { DashboardPage } from '@/features/dashboard';
 import { ResumePage } from '@/features/resume';
+import { EditorPage } from '@/features/editor';
 import { JobMatchPage } from '@/features/job-match';
 import { VersionsPage } from '@/features/versions';
 import { NotFoundPage } from '@/app/NotFoundPage';
@@ -27,6 +28,7 @@ export function AppRouter() {
         <Route element={<AppShell />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="resumes" element={<ResumePage />} />
+          <Route path="editor/:id" element={<EditorPage />} />
           <Route path="job-match" element={<JobMatchPage />} />
           <Route path="versions" element={<VersionsPage />} />
         </Route>

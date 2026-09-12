@@ -225,6 +225,42 @@ prioritised actions first, and the deterministic score is a single expandable li
 it (`ScorePanel`). A number tells you where you stand, the review tells you what to do, and
 only one of those earns the top of the screen.
 
+## Resume editor (Phase 8)
+
+`resumes` + `resume_versions` arrive here rather than with the versioning UI in
+Phase 11. The editor is the first thing that can change a user's resume, so the spec's
+safety rule — keep the user original as the source-of-truth version — has to hold from this
+point on. The parse is written twice at import: an immutable `original`, and the `draft` the
+editor autosaves into. Building on a single mutable row would have meant migrating live user
+data later.
+
+No `resume_sections` table (the spec marks it optional). ResumeData is stored whole as
+jsonb, so there is one canonical shape rather than rows reassembled into the domain model on
+every read.
+
+**A draft is allowed to be incomplete.** `resumeSchema` requires a name, an employer and a
+job title; that is right for a resume about to be exported and wrong for one being written.
+Clearing a field to retype it would fail validation mid-keystroke and lose the autosave, so
+`resumeDraftSchema` relaxes the emptiness rules while keeping shape and size limits — those
+bound both storage and the prompts this content later feeds. Completeness is enforced at
+export, in Phase 16, where it actually matters.
+
+**Concurrent edits are refused, not merged.** Every version row carries a `revision`, and a
+save matches on it in the `WHERE` clause so the check and the write are one atomic statement.
+Reading the revision first and then updating would leave a window for exactly the race the
+column exists to prevent. A stale save returns 409 and the UI asks the user to reload; it
+never retries, because retrying is how you overwrite whatever moved.
+
+**TipTap edits, plain text is stored.** Headings, code blocks and quotes are disabled: that
+structure belongs to the template, and offering it in a field means losing it at export.
+Marks are stripped on the way out — `richText.ts` converts between ProseMirror JSON and
+plain strings as pure, tested functions. Rich formatting inside resume content is an ATS
+liability, and the scorer and prompts read strings either way. Undo/redo comes free with
+ProseMirror's history.
+
+The score is recomputed from the draft on every save and returned with it, so the number
+always describes the text the server actually holds rather than the file once uploaded.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

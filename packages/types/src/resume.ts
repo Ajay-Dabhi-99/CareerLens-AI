@@ -101,7 +101,12 @@ export interface ResumeSuggestion {
   confidence: number;
 }
 
-export type VersionLabel = 'original' | 'ai-improved' | 'job-tailored';
+/**
+ * 'original' is the untouched parse and is never written again — it is what
+ * makes every later change reversible. 'draft' is the single working copy the
+ * editor autosaves into. The other two accumulate as history.
+ */
+export type VersionLabel = 'original' | 'draft' | 'ai-improved' | 'job-tailored';
 
 export interface ResumeVersion {
   id: string;
@@ -110,7 +115,23 @@ export interface ResumeVersion {
   label: VersionLabel;
   name: string;
   data: Resume;
+  /**
+   * Incremented on every save. An edit carries the revision it was based on, so
+   * a stale write is refused rather than silently overwriting a newer one.
+   */
+  revision: number;
   atsScoreId?: string;
   jobDescriptionId?: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+/** A resume the user is working on, independent of the file it was parsed from. */
+export interface ResumeRecord {
+  id: string;
+  userId: string;
+  resumeFileId?: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
 }

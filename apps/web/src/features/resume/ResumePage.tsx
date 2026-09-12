@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FileText, Sparkles, Trash2, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, PenLine, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileDropzone } from '@/components/FileDropzone';
@@ -15,6 +16,7 @@ import {
   type ResumeFile,
 } from '@/features/resume/api/resumeApi';
 import { generateReview, getReview, type StoredReview } from '@/features/resume/api/reviewApi';
+import { createEditorResume } from '@/features/editor/api/editorApi';
 import { AiReview } from '@/features/resume/components/AiReview';
 import { ScorePanel } from '@/features/resume/components/ScorePanel';
 
@@ -51,6 +53,8 @@ export function ResumePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [active, setActive] = useState<ActiveResume | null>(null);
   const [review, setReview] = useState<ReviewState>({ kind: 'none' });
+  const [openingEditor, setOpeningEditor] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const load = useCallback(() => {
     setList({ kind: 'loading' });
@@ -147,6 +151,26 @@ export function ResumePage() {
   function openResume(file: ResumeFile) {
     setActive({ fileId: file.id, fileName: file.fileName, score: null });
     void lookUpReview(file.id);
+  }
+
+  /**
+   * Turns an upload into an editable resume, then opens it.
+   *
+   * Creating persistent, versioned rows is a deliberate act, so it happens on
+   * this click rather than silently at upload time.
+   */
+  async function openEditor(file: ResumeFile) {
+    setOpeningEditor(file.id);
+    try {
+      const { resume } = await createEditorResume(file.id, file.fileName.replace(/\.[^.]+$/, ''));
+      navigate(`/editor/${resume.id}`);
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : 'Could not open that resume for editing.',
+      );
+    } finally {
+      setOpeningEditor(null);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -315,6 +339,15 @@ export function ResumePage() {
                 disabled={active?.fileId === file.id}
               >
                 {active?.fileId === file.id ? 'Open' : 'Review'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void openEditor(file)}
+                disabled={openingEditor === file.id}
+              >
+                <PenLine />
+                {openingEditor === file.id ? 'Opening…' : 'Edit'}
               </Button>
               <Button
                 variant="ghost"
