@@ -89,12 +89,34 @@ const DOUBLE_QUOTES = charClass([0x201c, 0x201d, 0x201f]);
 const LONG_DASHES = charClass([0x2013, 0x2014, 0x2212]);
 
 /**
+ * Removes blank lines when a document is uniformly double-spaced.
+ *
+ * Mammoth emits a blank line between every DOCX paragraph, so in that format a
+ * blank line carries no meaning. In PDFs and text files blank lines do separate
+ * entries, and dropping them would merge unrelated roles together.
+ *
+ * The two cases are distinguished structurally: a document with real structure
+ * has at least one pair of adjacent non-empty lines (a job title followed by its
+ * dates, say). A uniformly double-spaced one never does.
+ */
+function collapseUniformDoubleSpacing(lines: string[]): string[] {
+  const hasAdjacentContent = lines.some(
+    (line, index) => index > 0 && line !== '' && lines[index - 1] !== '',
+  );
+  const hasBlankLines = lines.some((line) => line === '');
+
+  if (hasAdjacentContent || !hasBlankLines) return lines;
+
+  return lines.filter((line) => line !== '');
+}
+
+/**
  * Collapses the noise real documents carry: exotic spaces, bullet glyphs, smart
  * quotes, carriage returns and runs of blank lines, so section detection sees
- * plain predictable lines.
+ * plain predictable lines regardless of which format the resume arrived in.
  */
 export function normalizeExtractedText(raw: string): string {
-  return raw
+  const cleaned = raw
     .replace(/\r\n?/g, '\n')
     .replace(UNUSUAL_SPACES, ' ')
     .replace(ZERO_WIDTH, '')
@@ -102,11 +124,11 @@ export function normalizeExtractedText(raw: string): string {
     .replace(SINGLE_QUOTES, "'")
     .replace(DOUBLE_QUOTES, '"')
     .replace(LONG_DASHES, '-')
-    .split('\n')
-    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
-    .join('\n')
     .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim());
+
+  return collapseUniformDoubleSpacing(cleaned).join('\n').trim();
 }
 
 export async function extractResumeText(

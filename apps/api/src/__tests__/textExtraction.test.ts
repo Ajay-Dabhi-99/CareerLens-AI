@@ -61,6 +61,39 @@ describe('extractResumeText', () => {
     expect(text).toBe('Bob Smith\nEngineer');
   });
 
+  it('collapses the blank line DOCX puts between every paragraph', async () => {
+    // Mammoth separates every paragraph with a blank line. Left in place, each line
+    // would look like a separate entry and roles would be split apart.
+    const docxShaped = Buffer.from(
+      ['EXPERIENCE', '', 'Engineer, Acme', '', 'Jan 2020 - Present', '', '- Did a thing'].join(
+        '\n',
+      ),
+    );
+
+    const text = await extractResumeText(docxShaped, 'txt');
+
+    expect(text).toBe('EXPERIENCE\nEngineer, Acme\nJan 2020 - Present\n- Did a thing');
+  });
+
+  it('keeps blank lines that genuinely separate entries', async () => {
+    // Here adjacent non-empty lines exist, so the blank line is real structure
+    // between two roles and must survive.
+    const structured = Buffer.from(
+      [
+        'EXPERIENCE',
+        'Engineer, Acme',
+        'Jan 2020 - Present',
+        '',
+        'Analyst, Globex',
+        'Jan 2018 - Dec 2019',
+      ].join('\n'),
+    );
+
+    const text = await extractResumeText(structured, 'txt');
+
+    expect(text.split('\n')).toContain('');
+  });
+
   it('normalizes messy whitespace and bullet glyphs from source documents', async () => {
     const messy = Buffer.from('Name\r\n\r\n\r\n•  Did a thing here\n');
     const text = await extractResumeText(messy, 'txt');
