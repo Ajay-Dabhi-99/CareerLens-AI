@@ -36,6 +36,8 @@ const TABLE_MIGRATIONS: Record<string, string> = {
   resumes: '0003_phase8_editor.sql',
   resume_versions: '0003_phase8_editor.sql',
   ai_changes: '0004_phase10_ai_changes.sql',
+  job_descriptions: '0006_phase12_job_descriptions.sql',
+  job_analyses: '0006_phase12_job_descriptions.sql',
 };
 
 function migrationFor(table: string): string {

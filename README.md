@@ -55,6 +55,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   section-by-section comparison of any two, and restore. Restoring keeps what you had
   first; the original upload can never be deleted.
 
+- **Phase 12 — Optional job description:** paste or upload a posting and have its
+  requirements, responsibilities and keywords read out. Always skippable: nothing else in
+  the product reads this data, so it cannot block anything.
+
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
 it PostgREST keeps serving a cached schema and the API reports the new tables as missing.

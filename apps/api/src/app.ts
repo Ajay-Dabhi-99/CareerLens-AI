@@ -32,6 +32,11 @@ import {
   type ResumeEditorRepository,
   type AiChangeRepository,
 } from './modules/editor/index.js';
+import {
+  createJobRepository,
+  registerJobRoutes,
+  type JobRepository,
+} from './modules/jobs/index.js';
 import { createGeminiProvider, DEFAULT_MODEL } from './services/ai/index.js';
 import type { AIProvider } from '@career-lens-ai/types';
 import { createSupabaseAdminClient } from './services/supabase/client.js';
@@ -48,6 +53,7 @@ export interface BuildAppOptions {
   reviews?: ResumeReviewRepository;
   editorResumes?: ResumeEditorRepository;
   aiChanges?: AiChangeRepository;
+  jobs?: JobRepository;
   aiProvider?: AIProvider;
 }
 
@@ -125,7 +131,8 @@ export async function buildApp(
     !options.storage ||
     !options.reviews ||
     !options.editorResumes ||
-    !options.aiChanges;
+    !options.aiChanges ||
+    !options.jobs;
   const supabase = needsSupabase ? createSupabaseAdminClient(env) : null;
 
   const authVerifier =
@@ -174,6 +181,10 @@ export async function buildApp(
   registerEditorRoutes(app, { resumes: editorResumes, resumeFiles, storage });
   registerRewriteRoutes(app, { resumes: editorResumes });
   registerVersionRoutes(app, { resumes: editorResumes });
+  registerJobRoutes(app, {
+    jobs: options.jobs ?? createJobRepository(supabase!),
+    model: env.GEMINI_MODEL ?? DEFAULT_MODEL,
+  });
   registerChangeRoutes(app, {
     resumes: editorResumes,
     changes: options.aiChanges ?? createAiChangeRepository(supabase!),

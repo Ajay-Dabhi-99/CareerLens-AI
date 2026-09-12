@@ -345,6 +345,31 @@ those that actually differ are shown, each labelled after the thing it describes
 ("Engineer at Acme", not "experience-0"). A section present on one side only is described in
 words rather than diffed against nothing.
 
+## Optional job description (Phase 12)
+
+`job_descriptions` holds the posting verbatim and `job_analyses` holds the requirements
+extracted from it. The analysis is derived and can be regenerated; the source text cannot, so
+it is kept exactly as given.
+
+**"Optional" is structural, not a rule to remember.** Nothing else in the schema references
+these tables and no other route reads them, so skipping a job description cannot block
+analysis, editing or export — there is no code path through which it could. A test asserts
+the other routes work without one. The Skip action is a real link out of the page, not a
+disabled-looking control.
+
+**A posting is untrusted text from an unknown source.** It reaches the model only as fenced
+data under the system instruction, and `analyzeJob` receives nothing but the text — no
+resume, no score, no write path. A posting containing "ignore previous instructions" can
+therefore produce, at worst, a wrong list of requirements.
+
+**Uploads are stored as text, not as files.** Unlike a resume there is no reason to keep the
+original bytes of a posting, and what is not stored does not have to be protected. Magic-byte
+validation still applies: a declared MIME type is a claim by the caller.
+
+**One extraction per posting.** The source text never changes, so a second call would spend
+quota to learn the same thing; the analysis is stored and returned unchanged thereafter. A
+failed extraction never loses the posting, so nothing has to be re-pasted.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

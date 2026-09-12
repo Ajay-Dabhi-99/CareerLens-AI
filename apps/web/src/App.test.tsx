@@ -136,7 +136,11 @@ describe('App', () => {
       ).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('link', { name: /job match/i }));
-      expect(await screen.findByText(/job matching isn.t built yet/i)).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: /job match/i })).toBeInTheDocument();
+
+      // The spec requires a job description to be optional at every point, so
+      // the page has to say so rather than merely permit it.
+      expect(await screen.findByText(/entirely\s+optional/i)).toBeInTheDocument();
     });
 
     it('signs the user out and returns them to the login page', async () => {
