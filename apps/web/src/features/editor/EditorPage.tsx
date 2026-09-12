@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { RotateCcw } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Redo2, RotateCcw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ErrorState';
@@ -16,6 +16,7 @@ import {
   type ResumeData,
 } from '@/features/editor/api/editorApi';
 import { useAutosave } from '@/features/editor/hooks/useAutosave';
+import { useUndoable } from '@/features/editor/hooks/useUndoable';
 import { SaveIndicator } from '@/features/editor/components/SaveIndicator';
 import { Field } from '@/features/editor/components/EntryCard';
 import {
@@ -40,12 +41,34 @@ type LoadState =
   | { kind: 'error'; message: string }
   | { kind: 'loaded'; snapshot: EditorSnapshot };
 
+/**
+ * Adding or removing an entry is a structural change, and must stay separately
+ * undoable even when it lands in the middle of a burst of typing. Comparing
+ * list lengths detects that without every section having to declare it.
+ */
+function isStructural(before: ResumeData, after: ResumeData): boolean {
+  const lists = ['experience', 'projects', 'skills', 'education', 'certifications'] as const;
+  return lists.some((key) => before[key].length !== after[key].length);
+}
+
 export function EditorPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
-  const [data, setData] = useState<ResumeData | null>(null);
   const [score, setScore] = useState<FullScore | null>(null);
   const [active, setActive] = useState<string>('personal');
+  const [confirmingRevert, setConfirmingRevert] = useState(false);
+
+  const {
+    present: data,
+    presentRef,
+    push,
+    undo,
+    redo,
+    reset,
+    canUndo,
+    canRedo,
+  } = useUndoable<ResumeData | null>(null);
 
   /**
    * The revision the next save will be based on. Kept in a ref rather than
@@ -61,7 +84,9 @@ export function EditorPage() {
     getEditorResume(id)
       .then((snapshot) => {
         revision.current = snapshot.draft.revision;
-        setData(snapshot.draft.data);
+        // reset rather than push: undoing into a previously open resume would
+        // restore another document's content over this one.
+        reset(snapshot.draft.data);
         setScore(snapshot.score);
         setState({ kind: 'loaded', snapshot });
       })
@@ -71,7 +96,7 @@ export function EditorPage() {
           message: error instanceof Error ? error.message : 'Could not open that resume.',
         }),
       );
-  }, [id]);
+  }, [id, reset]);
 
   useEffect(load, [load]);
 
@@ -87,26 +112,69 @@ export function EditorPage() {
     isConflict: (error) => error instanceof StaleDraftError,
   });
 
-  /** Every section edit funnels through here, so autosave has one entry point. */
+  /** Every section edit funnels through here, so history and autosave agree. */
   const edit = useCallback(
     (patch: Partial<ResumeData>) => {
-      setData((current) => {
-        if (!current) return current;
-        const next = { ...current, ...patch };
-        schedule(next);
-        return next;
-      });
+      const current = presentRef.current;
+      if (!current) return;
+
+      const next = { ...current, ...patch };
+      push(next, { coalesce: !isStructural(current, next) });
+      schedule(next);
     },
-    [schedule],
+    [presentRef, push, schedule],
   );
+
+  /**
+   * Undo and redo save what they restore.
+   *
+   * Leaving the restored state unsaved would mean the database still held the
+   * mistake the user just undid, and the next reload would bring it back.
+   */
+  const handleUndo = useCallback(() => {
+    const restored = undo();
+    if (restored) schedule(restored);
+  }, [undo, schedule]);
+
+  const handleRedo = useCallback(() => {
+    const restored = redo();
+    if (restored) schedule(restored);
+  }, [redo, schedule]);
 
   const revertToOriginal = useCallback(() => {
     if (state.kind !== 'loaded' || !state.snapshot.original) return;
 
     const original = state.snapshot.original.data;
-    setData(original);
+    // Structural by definition, and undoable: reverting by accident should not
+    // be the one action in this editor that cannot be taken back.
+    push(original, { coalesce: false });
     schedule(original);
-  }, [state, schedule]);
+    setConfirmingRevert(false);
+  }, [state, push, schedule]);
+
+  /** The shortcuts people try without thinking, so they should work. */
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+
+      if (key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        handleUndo();
+      } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+        event.preventDefault();
+        handleRedo();
+      } else if (key === 's') {
+        // Nothing to save that autosave will not do, but people press it to
+        // reassure themselves, and the browser's save dialog is not the answer.
+        event.preventDefault();
+        void saveNow();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleUndo, handleRedo, saveNow]);
 
   const problemCount = useMemo(
     () =>
@@ -127,16 +195,65 @@ export function EditorPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">{state.snapshot.resume.title}</h2>
-          <p className="text-sm text-muted-foreground">
-            Your original upload is kept untouched. Everything here is a working draft.
-          </p>
+        <div className="flex items-start gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back to your resumes"
+            onClick={async () => {
+              // Saves before leaving rather than losing whatever sits inside
+              // the debounce window.
+              await saveNow();
+              navigate('/resumes');
+            }}
+          >
+            <ArrowLeft />
+          </Button>
+          <div>
+            <h2 className="text-lg font-semibold">{state.snapshot.resume.title}</h2>
+            <p className="text-sm text-muted-foreground">
+              Your original upload is kept untouched. Everything here is a working draft.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-wrap items-center gap-2">
           <SaveIndicator status={status} onReload={load} />
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Undo"
+              title="Undo (Ctrl+Z)"
+              disabled={!canUndo}
+              onClick={handleUndo}
+            >
+              <Undo2 />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Redo"
+              title="Redo (Ctrl+Shift+Z)"
+              disabled={!canRedo}
+              onClick={handleRedo}
+            >
+              <Redo2 />
+            </Button>
+          </div>
+
           <Button variant="outline" size="sm" onClick={() => void saveNow()}>
             Save now
+          </Button>
+          <Button
+            size="sm"
+            onClick={async () => {
+              await saveNow();
+              navigate('/resumes');
+            }}
+          >
+            Done
           </Button>
         </div>
       </div>
@@ -303,10 +420,32 @@ export function EditorPage() {
           ) : null}
 
           {state.snapshot.original ? (
-            <Button variant="outline" size="sm" className="w-full" onClick={revertToOriginal}>
-              <RotateCcw />
-              Revert to original
-            </Button>
+            confirmingRevert ? (
+              <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground">
+                  This replaces everything here with your original upload. You can undo it
+                  afterwards.
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="destructive" onClick={revertToOriginal}>
+                    Revert
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setConfirmingRevert(false)}>
+                    Keep editing
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setConfirmingRevert(true)}
+              >
+                <RotateCcw />
+                Revert to original
+              </Button>
+            )
           ) : null}
         </aside>
       </div>
