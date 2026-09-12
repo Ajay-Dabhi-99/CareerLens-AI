@@ -106,7 +106,18 @@ export interface ResumeSuggestion {
  * makes every later change reversible. 'draft' is the single working copy the
  * editor autosaves into. The other two accumulate as history.
  */
-export type VersionLabel = 'original' | 'draft' | 'ai-improved' | 'job-tailored';
+export type VersionLabel =
+  | 'original'
+  | 'draft'
+  | 'snapshot'
+  | 'ai-improved'
+  | 'job-tailored';
+
+/** Labels the user can create directly; the rest are produced by the system. */
+export const USER_CREATABLE_LABELS = ['snapshot'] as const;
+
+/** Labels that must never be deleted: one is the source of truth, one is live. */
+export const PROTECTED_LABELS = ['original', 'draft'] as const;
 
 export interface ResumeVersion {
   id: string;

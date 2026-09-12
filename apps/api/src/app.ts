@@ -27,6 +27,7 @@ import {
   registerEditorRoutes,
   registerRewriteRoutes,
   registerChangeRoutes,
+  registerVersionRoutes,
   createAiChangeRepository,
   type ResumeEditorRepository,
   type AiChangeRepository,
@@ -172,6 +173,7 @@ export async function buildApp(
 
   registerEditorRoutes(app, { resumes: editorResumes, resumeFiles, storage });
   registerRewriteRoutes(app, { resumes: editorResumes });
+  registerVersionRoutes(app, { resumes: editorResumes });
   registerChangeRoutes(app, {
     resumes: editorResumes,
     changes: options.aiChanges ?? createAiChangeRepository(supabase!),

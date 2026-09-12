@@ -51,6 +51,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   Accept, Edit and Reject. Accepted changes are recorded so any of them can be put back
   later, including after closing the page.
 
+- **Phase 11 — Versioning:** named versions, history with a score per version, a
+  section-by-section comparison of any two, and restore. Restoring keeps what you had
+  first; the original upload can never be deleted.
+
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
 it PostgREST keeps serving a cached schema and the API reports the new tables as missing.

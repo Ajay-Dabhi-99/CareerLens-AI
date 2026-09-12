@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Redo2, RotateCcw, Undo2 } from 'lucide-react';
+import { ArrowLeft, BookmarkPlus, Redo2, RotateCcw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ErrorState';
@@ -14,6 +14,7 @@ import {
   listAiChanges,
   revertAiChange,
   saveDraft,
+  saveVersion,
   StaleDraftError,
   type AiChange,
   type EditorSnapshot,
@@ -67,6 +68,8 @@ export function EditorPage() {
   const [changes, setChanges] = useState<AiChange[]>([]);
   const [revertingId, setRevertingId] = useState<string | null>(null);
   const [revertError, setRevertError] = useState<string | null>(null);
+  const [versionName, setVersionName] = useState<string | null>(null);
+  const [versionNotice, setVersionNotice] = useState<string | null>(null);
 
   const {
     present: data,
@@ -208,6 +211,30 @@ export function EditorPage() {
     [id, push],
   );
 
+  /**
+   * Keeps the current draft as a named version.
+   *
+   * Saves first: a version of a draft the server has not seen yet would record
+   * something other than what is on screen.
+   */
+  const handleSaveVersion = useCallback(
+    async (name: string) => {
+      if (!id || !name.trim()) return;
+
+      await saveNow();
+      try {
+        await saveVersion(id, name.trim());
+        setVersionNotice(`Saved as "${name.trim()}". You will find it under Versions.`);
+        setVersionName(null);
+      } catch (error) {
+        setVersionNotice(
+          error instanceof Error ? error.message : 'That version could not be saved.',
+        );
+      }
+    },
+    [id, saveNow],
+  );
+
   /** The shortcuts people try without thinking, so they should work. */
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -303,6 +330,14 @@ export function EditorPage() {
             Save now
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setVersionName(versionName === null ? '' : null)}
+          >
+            <BookmarkPlus />
+            Save version
+          </Button>
+          <Button
             size="sm"
             onClick={async () => {
               await saveNow();
@@ -313,6 +348,42 @@ export function EditorPage() {
           </Button>
         </div>
       </div>
+
+      {versionName !== null ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
+          <label htmlFor="version-name" className="text-sm">
+            Call this version
+          </label>
+          <input
+            id="version-name"
+            value={versionName}
+            autoFocus
+            placeholder="Before tailoring for Monzo"
+            onChange={(event) => setVersionName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void handleSaveVersion(versionName);
+              if (event.key === 'Escape') setVersionName(null);
+            }}
+            className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <Button
+            size="sm"
+            disabled={!versionName.trim()}
+            onClick={() => void handleSaveVersion(versionName)}
+          >
+            Save
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setVersionName(null)}>
+            Cancel
+          </Button>
+        </div>
+      ) : null}
+
+      {versionNotice ? (
+        <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+          {versionNotice}
+        </p>
+      ) : null}
 
       <AiChangeList
         changes={changes}

@@ -65,12 +65,25 @@ export interface SaveDraftInput {
   baseRevision: number;
 }
 
+export interface SnapshotInput {
+  resumeId: string;
+  userId: string;
+  name: string;
+  data: Resume;
+  /** The version this was taken from, so the history has a shape. */
+  parentVersionId?: string;
+}
+
 export interface ResumeEditorRepository {
   create(input: CreateResumeInput): Promise<{ resume: ResumeRecord; draft: ResumeVersion }>;
   listForUser(userId: string): Promise<ResumeRecord[]>;
   findOwned(resumeId: string, userId: string): Promise<ResumeRecord | null>;
   findByFile(resumeFileId: string, userId: string): Promise<ResumeRecord | null>;
   findVersions(resumeId: string, userId: string): Promise<ResumeVersion[]>;
+  findVersion(versionId: string, userId: string): Promise<ResumeVersion | null>;
+  /** Keeps a copy of the current draft under a name the user chose. */
+  snapshot(input: SnapshotInput): Promise<ResumeVersion>;
+  deleteVersion(versionId: string, userId: string): Promise<boolean>;
   saveDraft(input: SaveDraftInput): Promise<ResumeVersion>;
   delete(resumeId: string, userId: string): Promise<boolean>;
 }
@@ -209,6 +222,64 @@ export function createResumeEditorRepository(client: SupabaseClient): ResumeEdit
       }
 
       return (data as VersionRow[]).map(toVersion);
+    },
+
+    async findVersion(versionId, userId) {
+      const { data, error } = await client
+        .from('resume_versions')
+        .select()
+        .eq('id', versionId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Could not read that version: ${error.message}`);
+      }
+
+      return data ? toVersion(data as VersionRow) : null;
+    },
+
+    async snapshot(input) {
+      const { data, error } = await client
+        .from('resume_versions')
+        .insert({
+          resume_id: input.resumeId,
+          user_id: input.userId,
+          label: 'snapshot',
+          name: input.name,
+          data: input.data,
+          parent_version_id: input.parentVersionId ?? null,
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        throw new Error(`Could not save that version: ${error?.message ?? 'no row'}`);
+      }
+
+      return toVersion(data as VersionRow);
+    },
+
+    async deleteVersion(versionId, userId) {
+      /*
+       * The label filter is the real protection, not the UI. The original is
+       * the source of truth every restore depends on and the draft is what the
+       * editor is writing to; deleting either would break the guarantee that
+       * any change can be undone, so neither is reachable from here.
+       */
+      const { data, error } = await client
+        .from('resume_versions')
+        .delete()
+        .eq('id', versionId)
+        .eq('user_id', userId)
+        .not('label', 'in', '("original","draft")')
+        .select('id');
+
+      if (error) {
+        throw new Error(`Could not delete that version: ${error.message}`);
+      }
+
+      return (data?.length ?? 0) > 0;
     },
 
     async saveDraft(input) {

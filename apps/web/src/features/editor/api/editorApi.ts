@@ -1,3 +1,4 @@
+import type { VersionLabel } from '@career-lens-ai/types';
 import { authedFetch } from '@/lib/api';
 import type { FullScore } from '@/features/resume/api/resumeApi';
 
@@ -87,7 +88,13 @@ export interface ResumeRecord {
 export interface ResumeVersion {
   id: string;
   resumeId: string;
-  label: 'original' | 'draft' | 'ai-improved' | 'job-tailored';
+  /**
+   * Taken from the shared domain type rather than restated here. This union had
+   * already drifted once: the package gained 'snapshot' and this copy did not,
+   * so the compiler was checking the frontend against a vocabulary the backend
+   * no longer used.
+   */
+  label: VersionLabel;
   name: string;
   data: ResumeData;
   revision: number;
@@ -235,4 +242,60 @@ export async function revertAiChange(
     { method: 'POST' },
   );
   return (await response.json()) as { change: AiChange; draft: ResumeVersion; score: FullScore };
+}
+
+export interface VersionSummary {
+  id: string;
+  label: ResumeVersion['label'];
+  name: string;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  /** Recomputed on read, so every version is scored by the same model. */
+  score: number;
+}
+
+export async function listVersions(resumeId: string): Promise<VersionSummary[]> {
+  const response = await authedFetch(`/api/editor/resumes/${resumeId}/versions`);
+  const body = (await response.json()) as { versions: VersionSummary[] };
+  return body.versions;
+}
+
+export async function getVersion(
+  resumeId: string,
+  versionId: string,
+): Promise<{ version: ResumeVersion; score: FullScore }> {
+  const response = await authedFetch(`/api/editor/resumes/${resumeId}/versions/${versionId}`);
+  return (await response.json()) as { version: ResumeVersion; score: FullScore };
+}
+
+export async function saveVersion(resumeId: string, name: string): Promise<ResumeVersion> {
+  const response = await authedFetch(`/api/editor/resumes/${resumeId}/versions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const body = (await response.json()) as { version: ResumeVersion };
+  return body.version;
+}
+
+export async function restoreVersion(
+  resumeId: string,
+  versionId: string,
+): Promise<{ draft: ResumeVersion; score: FullScore; keptAs: { id: string; name: string } }> {
+  const response = await authedFetch(
+    `/api/editor/resumes/${resumeId}/versions/${versionId}/restore`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },
+  );
+  return (await response.json()) as {
+    draft: ResumeVersion;
+    score: FullScore;
+    keptAs: { id: string; name: string };
+  };
+}
+
+export async function deleteVersion(resumeId: string, versionId: string): Promise<void> {
+  await authedFetch(`/api/editor/resumes/${resumeId}/versions/${versionId}`, {
+    method: 'DELETE',
+  });
 }

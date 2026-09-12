@@ -93,6 +93,9 @@ function makeDeps() {
     listForUser: vi.fn().mockResolvedValue([resumeRecord()]),
     findOwned: vi.fn().mockResolvedValue(resumeRecord()),
     findByFile: vi.fn().mockResolvedValue(null),
+    findVersion: vi.fn().mockResolvedValue(null),
+    snapshot: vi.fn(),
+    deleteVersion: vi.fn().mockResolvedValue(true),
     findVersions: vi.fn().mockResolvedValue([version('original'), version('draft')]),
     saveDraft: vi.fn().mockImplementation((input) =>
       Promise.resolve({ ...version('draft', input.baseRevision + 1), data: input.data }),

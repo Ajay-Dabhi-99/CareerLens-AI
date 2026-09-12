@@ -318,6 +318,33 @@ browser would race with autosave.
 ordinary autosave, so a failure to write history costs the ability to revert that one change
 from the list and never the edit itself.
 
+## Version history (Phase 11)
+
+Phase 8 built the versioned schema; this phase adds the 'snapshot' label, because none of
+the four existing ones honestly described "a working state the user chose to keep", and the
+UI for history, compare and restore.
+
+**Every version is scored on read, never stored.** A stored score goes stale the moment the
+scoring model changes, and comparing two versions scored by different models would be
+meaningless. Scoring is deterministic and costs nothing, so it is recomputed.
+
+**Restoring keeps the current work first, automatically.** Restoring replaces everything the
+user has been editing, and the click before it is a confirmation rather than a preview.
+"Manage resume variants safely" cannot coexist with an action that loses an afternoon's
+work, so the draft is snapshotted before it is overwritten and the response names where it
+went — the user is told, not asked to trust.
+
+**The original and the draft cannot be deleted.** The filter lives in the repository query,
+not only in the UI: the original is what every restore goes back to, and the draft is what
+the editor is writing into. Losing either would break the guarantee that any change can be
+undone.
+
+**Comparison follows the shape of a resume.** Two whole documents diffed as one blob produce
+something nobody reads, so `sectionsOf` flattens each version into named sections and only
+those that actually differ are shown, each labelled after the thing it describes
+("Engineer at Acme", not "experience-0"). A section present on one side only is described in
+words rather than diffed against nothing.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

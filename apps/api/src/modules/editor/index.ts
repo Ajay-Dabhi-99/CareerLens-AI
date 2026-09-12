@@ -7,3 +7,4 @@ export { registerChangeRoutes } from './changeRoutes.js';
 export { createAiChangeRepository } from './aiChangeRepository.js';
 export { revertChange } from './revertChange.js';
 export type { AiChangeRepository, AiChangeRecord } from './aiChangeRepository.js';
+export { registerVersionRoutes } from './versionRoutes.js';
