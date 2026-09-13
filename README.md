@@ -12,7 +12,7 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
 
 ## Status
 
-**Phase 16 — Export.** Done so far:
+**Phase 17 — Quality.** Done so far:
 
 - **Phase 0 — Foundation:** monorepo, React app, Fastify API, shared types/validation
   packages, lint, tests, environment config.
@@ -74,6 +74,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
 - **Phase 16 — Export:** Word documents generated from structured data and PDF through the
   browser's print, both from the exact version and template on screen. A final check blocks
   export while a name, contact detail or leftover placeholder is missing.
+
+- **Phase 17 — Quality:** rate limits on every route, security headers, secrets kept out of
+  logs, a friendly screen instead of a blank page if something crashes, pages loaded only when
+  visited, and accessibility lint with its findings fixed.
 
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without

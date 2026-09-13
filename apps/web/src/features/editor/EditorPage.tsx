@@ -70,6 +70,18 @@ export function EditorPage() {
   const [revertError, setRevertError] = useState<string | null>(null);
   const [versionName, setVersionName] = useState<string | null>(null);
   const [versionNotice, setVersionNotice] = useState<string | null>(null);
+  const versionInput = useRef<HTMLInputElement>(null);
+  const namingVersion = versionName !== null;
+
+  /*
+   * Focus moves to the name field when the user asks to save a version, and
+   * only then. The field appears in response to that click, so taking focus is
+   * where a keyboard or screen-reader user expects to be — unlike autoFocus,
+   * which fires on render and can pull focus away mid-task.
+   */
+  useEffect(() => {
+    if (namingVersion) versionInput.current?.focus();
+  }, [namingVersion]);
 
   const {
     present: data,
@@ -369,8 +381,8 @@ export function EditorPage() {
           </label>
           <input
             id="version-name"
+            ref={versionInput}
             value={versionName}
-            autoFocus
             placeholder="Before tailoring for Monzo"
             onChange={(event) => setVersionName(event.target.value)}
             onKeyDown={(event) => {

@@ -5,7 +5,9 @@
     "ecmaVersion": 2022,
     "sourceType": "module"
   },
-  "plugins": ["@typescript-eslint"],
+  "plugins": [
+    "@typescript-eslint"
+  ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -15,13 +17,37 @@
     "node": true,
     "es2022": true
   },
-  "ignorePatterns": ["dist", "build", "coverage", "node_modules", "*.config.js", "*.config.ts"],
+  "ignorePatterns": [
+    "dist",
+    "build",
+    "coverage",
+    "node_modules",
+    "*.config.js",
+    "*.config.ts"
+  ],
   "rules": {
     "@typescript-eslint/no-unused-vars": [
       "warn",
-      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "destructuredArrayIgnorePattern": "^_" }
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_"
+      }
     ],
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-explicit-any": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "apps/web/**/*.tsx"
+      ],
+      "plugins": [
+        "jsx-a11y"
+      ],
+      "extends": [
+        "plugin:jsx-a11y/recommended"
+      ]
+    }
+  ]
 }

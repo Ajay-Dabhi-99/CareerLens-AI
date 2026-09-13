@@ -16,6 +16,7 @@
     "@career-lens-ai/types": "*",
     "@career-lens-ai/validation": "*",
     "@fastify/cors": "^10.0.1",
+    "@fastify/helmet": "^13.1.1",
     "@fastify/multipart": "^10.1.1",
     "@fastify/rate-limit": "^11.2.0",
     "@fastify/sensible": "^6.0.2",

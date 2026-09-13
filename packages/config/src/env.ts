@@ -18,6 +18,19 @@ export const serverEnvSchema = z.object({
    */
   GEMINI_MODEL: z.string().default('gemini-3.5-flash-lite'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  /**
+   * Whether to believe X-Forwarded-For. Off locally, on behind a hosting proxy.
+   *
+   * It matters for more than logging: rate limits key on the client address, and
+   * behind a proxy without this every visitor appears to come from the proxy —
+   * so they all share one bucket, and one person's uploads lock everyone out.
+   * It must stay off when there is no proxy, or a client could spoof its own
+   * address and dodge the limits entirely.
+   */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

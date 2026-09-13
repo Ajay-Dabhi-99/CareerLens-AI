@@ -1,5 +1,6 @@
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
@@ -78,12 +79,33 @@ export async function buildApp(
   options: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
+    // Behind a hosting proxy the real client address is in X-Forwarded-For.
+    // Rate limits key on that address, so without this every visitor shares
+    // the proxy's one bucket. Off unless configured: trusting the header with
+    // no proxy in front would let a client choose its own address.
+    trustProxy: env.TRUST_PROXY ?? false,
     logger: {
       level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+      // Fastify does not log headers by default. This makes that a guarantee
+      // rather than an accident: a bearer token in a log file is a credential
+      // anyone with log access can use.
+      redact: {
+        paths: ['req.headers.authorization', 'req.headers.cookie', 'headers.authorization'],
+        censor: '[redacted]',
+      },
     },
   });
 
   await app.register(cors, { origin: env.CORS_ORIGIN });
+  /*
+   * Security headers. The API serves JSON and files to a web app on another
+   * origin, so cross-origin reads are allowed explicitly — the default
+   * same-origin resource policy would block the export download — while the
+   * rest (no sniffing, no framing, HSTS, no referrer leakage) stays strict.
+   */
+  await app.register(helmet, {
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
   await app.register(sensible);
   await app.register(multipart, {
     limits: {
@@ -91,10 +113,21 @@ export async function buildApp(
       files: 1,
     },
   });
-  // Global ceiling; public upload routes tighten this further per route.
+  /*
+   * A ceiling on every route, with expensive ones tightened further per route.
+   *
+   * This was registered with global: false, which meant only routes carrying
+   * their own rateLimit config were limited at all — thirty-five routes, every
+   * editor, version, job and export endpoint among them, had no limit. A ceiling
+   * that applies unless a route opts out is the only kind that cannot be
+   * forgotten when a route is added.
+   *
+   * Generous enough that normal use never meets it: autosave debounces to at
+   * most one request a second, well inside this.
+   */
   await app.register(rateLimit, {
-    global: false,
-    max: 100,
+    global: true,
+    max: 300,
     timeWindow: '1 minute',
   });
 

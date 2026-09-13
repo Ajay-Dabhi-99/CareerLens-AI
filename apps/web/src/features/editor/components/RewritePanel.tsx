@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { AlertTriangle, Check, Pencil, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ function OptionCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(option.text);
+  const textareaId = useId();
 
   return (
     <li
@@ -51,14 +52,19 @@ function OptionCard({
     >
       {editing ? (
         <div className="space-y-2">
-          <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {/* Associated with the box, so clicking the label focuses it and a
+              screen reader announces what the field is for. */}
+          <label
+            htmlFor={textareaId}
+            className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
             Your version
           </label>
           <textarea
+            id={textareaId}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             rows={3}
-            aria-label="Edit the suggestion before using it"
             className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>

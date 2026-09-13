@@ -78,7 +78,7 @@ describe('RewritePanel', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /edit first/i })[0]!);
 
-    const box = screen.getByLabelText(/edit the suggestion before using it/i);
+    const box = screen.getByLabelText(/your version/i);
     expect(box).toHaveValue('Owned the billing service end to end.');
 
     fireEvent.change(box, { target: { value: 'Owned billing, cutting failures by 40%.' } });
@@ -96,7 +96,7 @@ describe('RewritePanel', () => {
     renderPanel();
 
     fireEvent.click(screen.getAllByRole('button', { name: /edit first/i })[0]!);
-    fireEvent.change(screen.getByLabelText(/edit the suggestion before using it/i), {
+    fireEvent.change(screen.getByLabelText(/your version/i), {
       target: { value: '   ' },
     });
 

@@ -28,8 +28,16 @@ export function Alert({ className, variant, ...props }: AlertProps) {
   return <div role="alert" className={cn(alertVariants({ variant }), className)} {...props} />;
 }
 
-export function AlertTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h5 className={cn('mb-1 text-sm font-medium leading-none', className)} {...props} />;
+export function AlertTitle({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h5 className={cn('mb-1 text-sm font-medium leading-none', className)} {...props}>
+      {children}
+    </h5>
+  );
 }
 
 export function AlertDescription({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

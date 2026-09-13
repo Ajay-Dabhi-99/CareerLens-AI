@@ -511,6 +511,53 @@ fails mid-edit; `auditForExport` is where that is paid for. Deterministic, no mo
 **The server enforces the audit too.** The DOCX route refuses with 422 while anything blocks,
 rather than trusting that the UI checked first — a direct request must not be a way around it.
 
+## Quality (Phase 17)
+
+An audit of what was already built, then fixes for what it found. Nothing here adds a feature.
+
+**Every route is rate limited.** Only the AI and upload routes had limits; 35 others — reads,
+draft saves, version and export routes — had none. `@fastify/rate-limit` is now global at 300
+requests a minute per client, with the stricter per-route limits (AI 10–20 an hour, uploads)
+still applying on top. 300 is far above what a person clicking produces, and autosave is
+debounced, so only a script reaches it.
+
+**Rate limits key on the real client address.** Behind a hosting proxy every request appears to
+come from the proxy, so all visitors would share one bucket and one person could lock everyone
+out. `TRUST_PROXY=true` makes Fastify read `X-Forwarded-For`. It defaults to off because
+without a proxy the header is client-controlled, and trusting it would let anyone dodge limits.
+
+**Security headers** come from `@fastify/helmet`: Content-Security-Policy, HSTS, `nosniff`,
+frame denial. Cross-origin resource policy is set to `cross-origin` because the web app is on a
+different origin and must be able to read the DOCX download.
+
+**Secrets stay out of logs.** Pino redacts the `authorization` and `cookie` headers. The AI and
+database error paths already logged only a public message; tests throw errors containing fake
+keys and connection strings and assert none reach a response.
+
+**A render crash no longer blanks the page.** An error boundary wraps every in-app page, reset
+by route so moving elsewhere recovers without a reload, and an outer one wraps the whole app.
+It tells the user saved work is safe — true, since every edit is persisted by the server — and
+logs the error rather than showing a stack trace.
+
+**Pages load when visited.** The app shipped as one 1 MB script, so the landing page downloaded
+the rich-text editor and every template before showing a headline. Everything past the landing
+and sign-in pages is now `React.lazy`; the editor (TipTap, ~340 kB) loads only in the editor.
+React and the Supabase client are their own chunks, so a deploy invalidates app code but not
+libraries that rarely change. No chunk is over 500 kB.
+
+**Accessibility lint.** `eslint-plugin-jsx-a11y` runs on every component. Its findings were
+fixed rather than disabled: labels are tied to their fields, headings render their content, and
+the version-name field takes focus when the user opens it instead of through `autoFocus`. The one
+suppression is the generic `Label` wrapper, whose `htmlFor` comes from callers.
+
+**Known advisories, assessed rather than ignored:**
+
+- *TipTap (moderate)* — a prototype-pollution path in `mergeAttributes`, fixed only in 3.x. We
+  never pass user-shaped attribute objects: content is set from plain strings converted to a
+  fixed paragraph/bullet JSON shape. Not reachable; upgrade to 3.x when it is scheduled.
+- *Vite (high)* — the dev server's file-serving checks. 5.4.21 is the last 5.x; the dev server
+  is never deployed, only the built static files. Keep it off public networks.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per
