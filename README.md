@@ -63,6 +63,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   shown, partly shown, worth checking or not shown, with the line of the resume that
   supports it. A keyword pass settles what it can; only the rest costs an AI call.
 
+- **Phase 14 — Tailored resumes:** targeted suggestions for one posting, approved one at a
+  time, saved as a new version named after the job. Your working copy and original are
+  never touched, and nothing adds experience you do not have.
+
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
 it PostgREST keeps serving a cached schema and the API reports the new tables as missing.

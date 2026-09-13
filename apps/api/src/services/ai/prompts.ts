@@ -173,3 +173,49 @@ export function requirementMatchPrompt(resume: Resume, requirements: string[]): 
     resumeForPrompt(resume),
   ].join('\n');
 }
+
+/**
+ * Suggestions for tailoring a resume to one posting.
+ *
+ * Tailoring has a specific failure mode that general rewriting does not: the
+ * gaps are named, so there is an obvious temptation to close them by adding
+ * things. That would be writing a lie on someone's behalf, and they would have
+ * to defend it in an interview.
+ *
+ * Tailoring here means emphasis, never addition. The match verdicts are passed
+ * in so the model works on what is already weakly evidenced rather than
+ * guessing what the posting wants, and the rules say plainly what to do about a
+ * requirement the resume genuinely does not meet: leave it alone.
+ */
+export function tailoringPrompt(
+  resume: Resume,
+  role: string,
+  gaps: Array<{ requirement: string; state: string; evidence?: string }>,
+): string {
+  return [
+    `Suggest how this resume could be tailored for: ${role}`,
+    '',
+    'Absolute rules:',
+    '1. Never add a skill, tool, employer, achievement, metric or date that is',
+    '   not already in the resume. Tailoring means changing emphasis, not',
+    '   changing the facts.',
+    '2. If a requirement is genuinely not met, make no suggestion for it. Do not',
+    '   invent experience to close a gap, and do not suggest wording that would',
+    '   imply experience the resume does not show.',
+    '3. Prefer surfacing evidence that is already there: a relevant bullet buried',
+    '   under an unrelated one, a skill mentioned in passing that deserves its',
+    '   own line, a summary that talks about the wrong thing first.',
+    '4. Quote originalText exactly as it appears in the resume, so the change can',
+    '   be shown side by side.',
+    '5. Set requiresVerification when a suggestion depends on something the user',
+    '   would have to confirm.',
+    '',
+    'How this resume currently matches the posting:',
+    ...gaps.map(
+      (gap) =>
+        `- [${gap.state}] ${gap.requirement}${gap.evidence ? ` (found: "${gap.evidence}")` : ''}`,
+    ),
+    '',
+    resumeForPrompt(resume),
+  ].join('\n');
+}

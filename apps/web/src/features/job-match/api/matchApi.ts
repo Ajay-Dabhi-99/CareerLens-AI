@@ -45,3 +45,47 @@ export async function getMatch(jobId: string, resumeId: string): Promise<JobMatc
   const body = (await response.json()) as { match: JobMatch | null };
   return body.match;
 }
+
+export interface TailorSuggestionDto {
+  id: string;
+  section: string;
+  priority: 'high' | 'medium' | 'low';
+  issue: string;
+  whyItMatters: string;
+  originalText?: string;
+  suggestedText?: string;
+  requiresVerification: boolean;
+  confidence: number;
+}
+
+/**
+ * Asks how the resume could be tailored. Suggestions only — this endpoint has
+ * no ability to change anything, so creating the version is a separate request
+ * carrying the text the user approved.
+ */
+export async function suggestTailoring(
+  jobId: string,
+  resumeId: string,
+): Promise<{ suggestions: TailorSuggestionDto[]; message?: string }> {
+  const response = await authedFetch(`/api/jobs/${jobId}/tailor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resumeId }),
+  });
+  return (await response.json()) as { suggestions: TailorSuggestionDto[]; message?: string };
+}
+
+export async function createTailoredVersion(
+  jobId: string,
+  input: { resumeId: string; name: string; data: unknown },
+): Promise<{ version: { id: string; name: string }; score: { finalScore: number } }> {
+  const response = await authedFetch(`/api/jobs/${jobId}/tailored`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  return (await response.json()) as {
+    version: { id: string; name: string };
+    score: { finalScore: number };
+  };
+}

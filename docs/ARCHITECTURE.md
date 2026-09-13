@@ -408,6 +408,35 @@ claim we would not have earned.
 the difference between "your resume does not show this" and "you cannot do this" is the whole
 difference between useful advice and an insult.
 
+## Tailored resumes (Phase 14)
+
+No migration: `resume_versions` already carries the `job-tailored` label, so a tailored
+resume is a version like any other.
+
+**Tailoring means emphasis, never addition.** This is the phase where a model is most tempted
+to invent, because the gaps are named for it — and closing one by adding a skill would be
+writing a lie the user has to defend in an interview. The prompt says so in those words, and
+tells it what to do about a requirement the resume genuinely does not meet: leave it alone.
+
+**The suggestion route cannot write.** As with rewriting, creating the tailored version is a
+separate request carrying the text the user approved, so "tailor without damaging the master
+resume" is a property of the design rather than a promise. A test asserts no write path
+exists.
+
+**Only the gaps are sent.** Requirements the match already settled as `matched` are excluded:
+they need no tailoring, and including them would spend the model's attention on finished
+work. When nothing is unmatched, the route answers without an AI call at all.
+
+**The tailored version is a sibling.** It is written alongside the draft and the original,
+never over either, and named after the posting — so a resume tailored for one job cannot
+quietly become the one sent to another.
+
+**Applying is exact-match and skips rather than guesses.** A suggestion whose original text is
+no longer in the resume is counted as skipped and reported: the user may have edited that line
+since, and replacing the wrong thing on a resume is worse than leaving a suggestion unapplied.
+Rewritten bullets keep `source: 'ai'` so tailoring does not launder AI wording into text that
+looks reviewed.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

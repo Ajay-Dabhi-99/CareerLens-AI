@@ -111,6 +111,7 @@ function makeDeps() {
     findByFile: vi.fn().mockResolvedValue(null),
     findVersion: vi.fn().mockResolvedValue(null),
     findVersions: vi.fn().mockResolvedValue([draftVersion()]),
+    createTailored: vi.fn(),
     snapshot: vi.fn(),
     saveDraft: vi.fn(),
     deleteVersion: vi.fn(),
@@ -122,6 +123,7 @@ function makeDeps() {
     rewriteSection: vi.fn(),
     analyzeJob: vi.fn(),
     generateSuggestions: vi.fn(),
+    suggestTailoring: vi.fn().mockResolvedValue([]),
     matchRequirements: vi.fn().mockResolvedValue([
       { requirementId: 'r2', state: 'partial', evidence: 'Led the ledger migration', confidence: 0.6 },
     ]),

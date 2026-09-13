@@ -68,6 +68,7 @@ function makeDeps() {
     findOwned: vi.fn().mockResolvedValue(resumeRecord()),
     findByFile: vi.fn().mockResolvedValue(null),
     findVersion: vi.fn().mockResolvedValue(null),
+    createTailored: vi.fn(),
     snapshot: vi.fn(),
     deleteVersion: vi.fn().mockResolvedValue(true),
     findVersions: vi.fn().mockResolvedValue([draftVersion()]),
@@ -94,6 +95,7 @@ function makeDeps() {
     analyzeJob: vi.fn(),
     generateSuggestions: vi.fn(),
     matchRequirements: vi.fn().mockResolvedValue([]),
+    suggestTailoring: vi.fn().mockResolvedValue([]),
   };
 
   const resumeFiles: ResumeFileRepository = {

@@ -22,7 +22,16 @@ import {
 } from '@/features/job-match/api/jobApi';
 import { RequirementList } from '@/features/job-match/components/RequirementList';
 import { MatchResult } from '@/features/job-match/components/MatchResult';
-import { getMatch, runMatch, type JobMatch } from '@/features/job-match/api/matchApi';
+import {
+  createTailoredVersion,
+  getMatch,
+  runMatch,
+  suggestTailoring,
+  type JobMatch,
+} from '@/features/job-match/api/matchApi';
+import { TailorPanel, type TailorSuggestion } from '@/features/job-match/components/TailorPanel';
+import { applyTailoring } from '@/features/job-match/lib/applyTailoring';
+import { getEditorResume } from '@/features/editor/api/editorApi';
 import { listEditorResumes, type ResumeRecord } from '@/features/editor/api/editorApi';
 
 type Mode = 'paste' | 'upload';
@@ -43,6 +52,10 @@ export function JobMatchPage() {
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [match, setMatch] = useState<JobMatch | null>(null);
   const [matching, setMatching] = useState(false);
+  const [suggestions, setSuggestions] = useState<TailorSuggestion[] | null>(null);
+  const [tailoring, setTailoring] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [tailorNote, setTailorNote] = useState<string | null>(null);
 
   const load = useCallback(() => {
     listJobs()
@@ -173,6 +186,56 @@ export function JobMatchPage() {
       setError(e instanceof Error ? e.message : 'The comparison could not be run.');
     } finally {
       setMatching(false);
+    }
+  }
+
+  async function handleTailor() {
+    if (!selected || !resumeId) return;
+    setTailoring(true);
+    setError(null);
+    setTailorNote(null);
+
+    try {
+      const result = await suggestTailoring(selected.id, resumeId);
+      setSuggestions(result.suggestions);
+      if (result.message) setTailorNote(result.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Tailoring suggestions could not be generated.');
+    } finally {
+      setTailoring(false);
+    }
+  }
+
+  /**
+   * Builds the tailored version from the suggestions the user chose.
+   *
+   * The draft is read fresh rather than reused from earlier state, so the
+   * tailored copy is made from what the resume says now — not from what it said
+   * when the suggestions were generated.
+   */
+  async function handleCreateTailored(name: string, accepted: TailorSuggestion[]) {
+    if (!selected || !resumeId) return;
+    setCreating(true);
+    setError(null);
+
+    try {
+      const snapshot = await getEditorResume(resumeId);
+      const { data, applied, skipped } = applyTailoring(snapshot.draft.data, accepted);
+
+      const result = await createTailoredVersion(selected.id, { resumeId, name, data });
+
+      setSuggestions(null);
+      setTailorNote(
+        `Created "${result.version.name}" (scores ${result.score.finalScore}). ` +
+          `${applied} change${applied === 1 ? '' : 's'} applied` +
+          (skipped > 0
+            ? `, ${skipped} skipped because that text had changed since.`
+            : '. Your working copy is untouched.'),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The tailored version could not be created.');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -429,6 +492,41 @@ export function JobMatchPage() {
           analysis={analysis}
           matches={match.matches}
           matchScore={match.matchScore}
+        />
+      ) : null}
+
+      {tailorNote ? (
+        <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+          {tailorNote}
+        </p>
+      ) : null}
+
+      {match && !suggestions ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Tailor for this role</CardTitle>
+            <CardDescription>
+              Suggests how to bring the relevant parts of your resume forward. It will not add
+              experience you do not have, and it creates a separate version rather than
+              changing your working copy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" disabled={tailoring} onClick={() => void handleTailor()}>
+              <Sparkles />
+              {tailoring ? 'Reading both…' : 'Suggest tailoring'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {suggestions && suggestions.length > 0 ? (
+        <TailorPanel
+          suggestions={suggestions}
+          defaultName={`Tailored for ${selected?.title || selected?.company || 'this role'}`}
+          creating={creating}
+          onCreate={(name, accepted) => void handleCreateTailored(name, accepted)}
+          onDismiss={() => setSuggestions(null)}
         />
       ) : null}
     </div>

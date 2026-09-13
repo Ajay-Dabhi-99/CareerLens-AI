@@ -37,6 +37,7 @@ import {
   createJobMatchRepository,
   registerJobRoutes,
   registerMatchRoutes,
+  registerTailorRoutes,
   type JobRepository,
   type JobMatchRepository,
 } from './modules/jobs/index.js';
@@ -189,12 +190,15 @@ export async function buildApp(
   const jobs = options.jobs ?? createJobRepository(supabase!);
 
   registerJobRoutes(app, { jobs, model: env.GEMINI_MODEL ?? DEFAULT_MODEL });
+  const jobMatches = options.jobMatches ?? createJobMatchRepository(supabase!);
+
   registerMatchRoutes(app, {
     jobs,
-    matches: options.jobMatches ?? createJobMatchRepository(supabase!),
+    matches: jobMatches,
     resumes: editorResumes,
     model: env.GEMINI_MODEL ?? DEFAULT_MODEL,
   });
+  registerTailorRoutes(app, { jobs, matches: jobMatches, resumes: editorResumes });
   registerChangeRoutes(app, {
     resumes: editorResumes,
     changes: options.aiChanges ?? createAiChangeRepository(supabase!),

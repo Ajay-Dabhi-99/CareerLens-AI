@@ -5,3 +5,4 @@ export type { JobRouteDeps } from './routes.js';
 export { registerMatchRoutes } from './matchRoutes.js';
 export { createJobMatchRepository } from './matchRepository.js';
 export type { JobMatchRepository, JobMatchRecord } from './matchRepository.js';
+export { registerTailorRoutes } from './tailorRoutes.js';

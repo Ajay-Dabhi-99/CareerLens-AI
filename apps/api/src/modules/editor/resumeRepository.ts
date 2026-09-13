@@ -83,6 +83,8 @@ export interface ResumeEditorRepository {
   findVersion(versionId: string, userId: string): Promise<ResumeVersion | null>;
   /** Keeps a copy of the current draft under a name the user chose. */
   snapshot(input: SnapshotInput): Promise<ResumeVersion>;
+  /** Creates a version tailored to one posting, alongside the draft. */
+  createTailored(input: SnapshotInput): Promise<ResumeVersion>;
   deleteVersion(versionId: string, userId: string): Promise<boolean>;
   saveDraft(input: SaveDraftInput): Promise<ResumeVersion>;
   delete(resumeId: string, userId: string): Promise<boolean>;
@@ -255,6 +257,34 @@ export function createResumeEditorRepository(client: SupabaseClient): ResumeEdit
 
       if (error || !data) {
         throw new Error(`Could not save that version: ${error?.message ?? 'no row'}`);
+      }
+
+      return toVersion(data as VersionRow);
+    },
+
+    /**
+     * A version tailored to one posting.
+     *
+     * A new row, always. The draft and the original are never written here, so
+     * "tailor without damaging the master resume" holds because there is no
+     * code path that could damage it — not because this function is careful.
+     */
+    async createTailored(input) {
+      const { data, error } = await client
+        .from('resume_versions')
+        .insert({
+          resume_id: input.resumeId,
+          user_id: input.userId,
+          label: 'job-tailored',
+          name: input.name,
+          data: input.data,
+          parent_version_id: input.parentVersionId ?? null,
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        throw new Error(`Could not create the tailored version: ${error?.message ?? 'no row'}`);
       }
 
       return toVersion(data as VersionRow);

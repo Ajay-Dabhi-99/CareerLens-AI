@@ -91,6 +91,7 @@ function makeDeps() {
     }),
     generateSuggestions: vi.fn(),
     matchRequirements: vi.fn().mockResolvedValue([]),
+    suggestTailoring: vi.fn().mockResolvedValue([]),
   };
 
   const editorResumes: ResumeEditorRepository = {
@@ -100,6 +101,7 @@ function makeDeps() {
     findByFile: vi.fn().mockResolvedValue(null),
     findVersion: vi.fn().mockResolvedValue(null),
     findVersions: vi.fn().mockResolvedValue([]),
+    createTailored: vi.fn(),
     snapshot: vi.fn(),
     saveDraft: vi.fn(),
     deleteVersion: vi.fn(),

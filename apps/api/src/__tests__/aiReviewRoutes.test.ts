@@ -101,6 +101,7 @@ function makeDeps() {
     analyzeJob: vi.fn(),
     generateSuggestions: vi.fn(),
     matchRequirements: vi.fn().mockResolvedValue([]),
+    suggestTailoring: vi.fn().mockResolvedValue([]),
   };
 
   return { resumeFiles, reviews, storage, anonymousSessions, authVerifier, aiProvider };

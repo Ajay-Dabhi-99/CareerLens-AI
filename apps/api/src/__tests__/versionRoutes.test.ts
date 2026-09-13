@@ -78,6 +78,7 @@ function makeDeps() {
     findByFile: vi.fn().mockResolvedValue(null),
     findVersion: vi.fn().mockResolvedValue(SNAPSHOT()),
     findVersions: vi.fn().mockResolvedValue([ORIGINAL(), DRAFT(), SNAPSHOT()]),
+    createTailored: vi.fn(),
     snapshot: vi
       .fn()
       .mockImplementation((input) =>

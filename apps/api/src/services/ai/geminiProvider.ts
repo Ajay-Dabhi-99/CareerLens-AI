@@ -12,6 +12,7 @@ import type {
   RewriteInput,
   RewriteResult,
   SuggestionInput,
+  TailoringInput,
 } from '@career-lens-ai/types';
 import { ATS_CATEGORY_LABELS } from '@career-lens-ai/types';
 import {
@@ -27,6 +28,7 @@ import {
   jobAnalysisPrompt,
   requirementMatchPrompt,
   resumeForPrompt,
+  tailoringPrompt,
   rewritePrompt,
   suggestionsPrompt,
   SYSTEM_INSTRUCTION,
@@ -385,6 +387,42 @@ export function createGeminiProvider(options: GeminiProviderOptions): AIProvider
 
           return { ...verdict, state, evidence: quoted ? quote : undefined };
         });
+    },
+
+    /**
+     * Suggestions for tailoring to one posting.
+     *
+     * Shares the suggestion shape and validation with generateSuggestions, and
+     * differs only in the prompt — which is the part that matters, because
+     * tailoring is where a model is most tempted to close a gap by inventing.
+     */
+    async suggestTailoring(input: TailoringInput): Promise<ResumeSuggestion[]> {
+      const bare = await callAndValidate(
+        generate,
+        logger,
+        'suggestTailoring',
+        {
+          model,
+          prompt: tailoringPrompt(input.resume, input.role, input.gaps),
+          responseSchema: suggestionsResponseSchema,
+        },
+        z.object({
+          suggestions: z.array(
+            z.object({
+              section: z.string(),
+              priority: z.enum(['high', 'medium', 'low']),
+              issue: z.string(),
+              whyItMatters: z.string(),
+              originalText: z.string().optional(),
+              suggestedText: z.string().optional(),
+              requiresVerification: z.boolean(),
+              confidence: z.number().min(0).max(1),
+            }),
+          ),
+        }),
+      );
+
+      return bare.suggestions.map((suggestion) => ({ id: randomUUID(), ...suggestion }));
     },
 
     async generateSuggestions(input: SuggestionInput): Promise<ResumeSuggestion[]> {

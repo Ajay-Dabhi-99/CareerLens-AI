@@ -71,6 +71,17 @@ export interface RequirementVerdict {
   confidence: number;
 }
 
+export interface TailoringInput {
+  resume: Resume;
+  /** Shown to the model so suggestions name the role they are aimed at. */
+  role: string;
+  /**
+   * How the resume currently matches, so the model works on what is weakly
+   * evidenced rather than guessing what the posting wants.
+   */
+  gaps: Array<{ requirement: string; state: MatchState; evidence?: string }>;
+}
+
 export interface JobAnalysisInput {
   rawJobDescriptionText: string;
 }
@@ -86,4 +97,5 @@ export interface AIProvider {
   analyzeJob(input: JobAnalysisInput): Promise<JobAnalysis>;
   generateSuggestions(input: SuggestionInput): Promise<ResumeSuggestion[]>;
   matchRequirements(input: RequirementMatchInput): Promise<RequirementVerdict[]>;
+  suggestTailoring(input: TailoringInput): Promise<ResumeSuggestion[]>;
 }
