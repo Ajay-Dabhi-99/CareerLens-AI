@@ -59,6 +59,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
   requirements, responsibilities and keywords read out. Always skippable: nothing else in
   the product reads this data, so it cannot block anything.
 
+- **Phase 13 — Job match:** each requirement compared against the resume and reported as
+  shown, partly shown, worth checking or not shown, with the line of the resume that
+  supports it. A keyword pass settles what it can; only the rest costs an AI call.
+
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
 it PostgREST keeps serving a cached schema and the API reports the new tables as missing.

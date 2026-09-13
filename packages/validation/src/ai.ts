@@ -46,3 +46,20 @@ export const jobAnalysisSchema = z.object({
 });
 
 export const generateSuggestionsResultSchema = z.array(resumeSuggestionSchema);
+
+/**
+ * Verdicts on requirements a keyword lookup could not settle.
+ *
+ * Validated like every other AI response before anything downstream trusts it:
+ * the model is asked for a shape, and the reply is parsed regardless.
+ */
+export const requirementVerdictSchema = z.object({
+  requirementId: z.string().min(1),
+  state: z.enum(['matched', 'partial', 'missing', 'needsVerification']),
+  evidence: z.string().optional(),
+  confidence: z.number().min(0).max(1),
+});
+
+export const requirementVerdictsSchema = z.object({
+  verdicts: z.array(requirementVerdictSchema),
+});

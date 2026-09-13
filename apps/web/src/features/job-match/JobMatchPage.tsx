@@ -21,6 +21,9 @@ import {
   type JobDescription,
 } from '@/features/job-match/api/jobApi';
 import { RequirementList } from '@/features/job-match/components/RequirementList';
+import { MatchResult } from '@/features/job-match/components/MatchResult';
+import { getMatch, runMatch, type JobMatch } from '@/features/job-match/api/matchApi';
+import { listEditorResumes, type ResumeRecord } from '@/features/editor/api/editorApi';
 
 type Mode = 'paste' | 'upload';
 
@@ -36,6 +39,10 @@ export function JobMatchPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [resumes, setResumes] = useState<ResumeRecord[]>([]);
+  const [resumeId, setResumeId] = useState<string | null>(null);
+  const [match, setMatch] = useState<JobMatch | null>(null);
+  const [matching, setMatching] = useState(false);
 
   const load = useCallback(() => {
     listJobs()
@@ -59,18 +66,41 @@ export function JobMatchPage() {
 
   useEffect(load, [load]);
 
+  /*
+   * Matching needs a resume as well as a posting. Loading the list here rather
+   * than asking the user to go and find one keeps the whole comparison on one
+   * screen — and if they have none, the button explains that instead of
+   * failing.
+   */
+  useEffect(() => {
+    listEditorResumes()
+      .then((list) => {
+        setResumes(list);
+        setResumeId((current) => current ?? list[0]?.id ?? null);
+      })
+      .catch(() => setResumes([]));
+  }, []);
+
   const open = useCallback(async (job: JobDescription) => {
     setSelected(job);
     setAnalysis(null);
     setError(null);
 
+    setMatch(null);
+
     try {
       const result = await getJob(job.id);
       setAnalysis(result.analysis);
+
+      // Reading a stored match costs nothing, so a posting already compared
+      // shows its result straight away rather than asking again.
+      if (result.analysis && resumeId) {
+        setMatch(await getMatch(job.id, resumeId));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not open that job description.');
     }
-  }, []);
+  }, [resumeId]);
 
   async function handlePaste() {
     setBusy(true);
@@ -128,6 +158,21 @@ export function JobMatchPage() {
       setError(e instanceof Error ? e.message : 'The requirements could not be extracted.');
     } finally {
       setAnalyzing(false);
+    }
+  }
+
+  async function handleMatch() {
+    if (!selected || !resumeId) return;
+    setMatching(true);
+    setError(null);
+
+    try {
+      const result = await runMatch(selected.id, resumeId);
+      setMatch(result.match);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The comparison could not be run.');
+    } finally {
+      setMatching(false);
     }
   }
 
@@ -330,6 +375,62 @@ export function JobMatchPage() {
       ) : null}
 
       {analysis ? <RequirementList analysis={analysis} /> : null}
+
+      {analysis && !match ? (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Target className="size-5 text-primary" aria-hidden="true" />
+              Compare against your resume
+            </CardTitle>
+            <CardDescription>
+              Checks each requirement against what your resume actually says, and quotes the
+              line for anything it finds.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {resumes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                You have no resume open in the editor yet. Upload one under Resumes and click
+                Edit, then come back.
+              </p>
+            ) : (
+              <>
+                {resumes.length > 1 ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="match-resume">Which resume</Label>
+                    <select
+                      id="match-resume"
+                      value={resumeId ?? ''}
+                      onChange={(event) => setResumeId(event.target.value)}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {resumes.map((resume) => (
+                        <option key={resume.id} value={resume.id}>
+                          {resume.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                <Button disabled={matching || !resumeId} onClick={() => void handleMatch()}>
+                  <Target />
+                  {matching ? 'Comparing…' : 'Compare with my resume'}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {analysis && match ? (
+        <MatchResult
+          analysis={analysis}
+          matches={match.matches}
+          matchScore={match.matchScore}
+        />
+      ) : null}
     </div>
   );
 }

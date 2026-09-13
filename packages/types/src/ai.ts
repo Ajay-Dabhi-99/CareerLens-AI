@@ -9,7 +9,7 @@
  */
 
 import type { Resume, ResumeSuggestion, SuggestionPriority } from './resume.js';
-import type { JobAnalysis, JobRequirement } from './job.js';
+import type { JobAnalysis, JobRequirement, MatchState } from './job.js';
 import type { AtsCategoryResult } from './ats.js';
 
 export interface ResumeAnalysisInput {
@@ -47,6 +47,30 @@ export interface RewriteResult {
   options: RewriteOption[];
 }
 
+/**
+ * Requirements a keyword lookup could not settle, sent for judgement.
+ *
+ * Only the unresolved ones travel: what could be decided by looking already
+ * was, so the model spends its attention — and the quota — on the cases that
+ * genuinely need reading.
+ */
+export interface RequirementMatchInput {
+  resume: Resume;
+  requirements: JobRequirement[];
+}
+
+export interface RequirementVerdict {
+  requirementId: string;
+  state: MatchState;
+  /**
+   * A verbatim line from the resume. The caller checks it really appears there
+   * before showing it, because evidence is the whole basis for trusting a
+   * verdict and an invented quote would be worse than no verdict at all.
+   */
+  evidence?: string;
+  confidence: number;
+}
+
 export interface JobAnalysisInput {
   rawJobDescriptionText: string;
 }
@@ -61,4 +85,5 @@ export interface AIProvider {
   rewriteSection(input: RewriteInput): Promise<RewriteResult>;
   analyzeJob(input: JobAnalysisInput): Promise<JobAnalysis>;
   generateSuggestions(input: SuggestionInput): Promise<ResumeSuggestion[]>;
+  matchRequirements(input: RequirementMatchInput): Promise<RequirementVerdict[]>;
 }

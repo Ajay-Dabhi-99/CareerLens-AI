@@ -6,6 +6,8 @@ import type {
   JobAnalysisInput,
   ResumeAnalysis,
   ResumeAnalysisInput,
+  RequirementMatchInput,
+  RequirementVerdict,
   ResumeSuggestion,
   RewriteInput,
   RewriteResult,
@@ -17,17 +19,21 @@ import {
   resumeAnalysisSchema,
   rewriteResultSchema,
   generateSuggestionsResultSchema,
+  requirementVerdictsSchema,
 } from '@career-lens-ai/validation';
 import { z } from 'zod';
 import {
   analyzeResumePrompt,
   jobAnalysisPrompt,
+  requirementMatchPrompt,
+  resumeForPrompt,
   rewritePrompt,
   suggestionsPrompt,
   SYSTEM_INSTRUCTION,
 } from './prompts.js';
 import {
   jobAnalysisResponseSchema,
+  requirementVerdictsResponseSchema,
   resumeAnalysisResponseSchema,
   rewriteResponseSchema,
   suggestionsResponseSchema,
@@ -319,6 +325,66 @@ export function createGeminiProvider(options: GeminiProviderOptions): AIProvider
         throw new AIResponseError('analyzeJob: assembled analysis failed validation');
       }
       return analysis;
+    },
+
+    /**
+     * Judges requirements a keyword lookup could not settle.
+     *
+     * Evidence is checked against the resume before it is returned. The prompt
+     * requires a verbatim quote, but a prompt is a request and this is the one
+     * place where a fabricated quote would do real damage: a "matched" verdict
+     * backed by a line the resume does not contain would send someone into an
+     * interview believing their CV says something it does not. A verdict whose
+     * evidence cannot be found is demoted to needsVerification and the quote
+     * dropped, so the claim survives only as a prompt for the user to check.
+     */
+    async matchRequirements(input: RequirementMatchInput): Promise<RequirementVerdict[]> {
+      if (input.requirements.length === 0) return [];
+
+      const { verdicts } = await callAndValidate(
+        generate,
+        logger,
+        'matchRequirements',
+        {
+          model,
+          prompt: requirementMatchPrompt(
+            input.resume,
+            input.requirements.map((requirement) => requirement.text),
+          ),
+          responseSchema: requirementVerdictsResponseSchema,
+        },
+        requirementVerdictsSchema,
+      );
+
+      const corpus = resumeForPrompt(input.resume).toLowerCase();
+      const known = new Set(input.requirements.map((requirement) => requirement.id));
+
+      return verdicts
+        // A verdict on a requirement nobody asked about cannot be placed.
+        .filter((verdict) => known.has(verdict.requirementId))
+        .map((verdict) => {
+          const quote = verdict.evidence?.trim();
+          const quoted = Boolean(quote) && corpus.includes(quote!.toLowerCase());
+
+          if (quote && !quoted) {
+            logger.warn(
+              { operation: 'matchRequirements', requirementId: verdict.requirementId },
+              'Discarded evidence that does not appear in the resume',
+            );
+
+            return {
+              requirementId: verdict.requirementId,
+              state: 'needsVerification' as const,
+              confidence: Math.min(verdict.confidence, 0.5),
+            };
+          }
+
+          // Without a quote, "matched" is an assertion rather than a finding.
+          const state =
+            verdict.state === 'matched' && !quoted ? ('needsVerification' as const) : verdict.state;
+
+          return { ...verdict, state, evidence: quoted ? quote : undefined };
+        });
     },
 
     async generateSuggestions(input: SuggestionInput): Promise<ResumeSuggestion[]> {

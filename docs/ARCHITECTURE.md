@@ -370,6 +370,44 @@ validation still applies: a declared MIME type is a claim by the caller.
 quota to learn the same thing; the analysis is stored and returned unchanged thereafter. A
 failed extraction never loses the posting, so nothing has to be re-pasted.
 
+## Job match (Phase 13)
+
+Two passes, in the order the spec's hybrid table sets out.
+
+**A keyword lookup settles what can be settled by looking.** A requirement naming a specific
+technology either appears in the resume or it does not, and that is a lookup rather than a
+judgement: explainable, identical every time, and free. Terms are matched whole-word across
+the whole resume, with the strongest single line quoted as evidence.
+
+Two rules earn their keep there. Filler is stripped, so "Strong experience with Go" matches
+on Go rather than on "experience". And a hit made only of *generic* words does not count:
+"Rust systems programming" finding the word "systems" in "payment systems" would otherwise
+report partial Rust experience to someone who has none.
+
+**Only what is left goes to the model**, which can recognise a requirement described in
+different words — "experience leading teams" against a resume that says "Led the ledger
+migration". That is the case a keyword search cannot reach, and it is the only thing the
+quota is spent on.
+
+**Evidence is verified before it is shown.** The prompt requires a verbatim quote, but a
+prompt is a request. A verdict whose evidence does not appear in the resume is demoted to
+`needsVerification` and the quote dropped: a "matched" backed by an invented line would send
+someone into an interview believing their CV says something it does not. A `matched` with no
+quote at all is demoted the same way.
+
+**The score is computed here, never by the model**, exactly as with the resume score. Matched
+counts 1, partial 0.5, needsVerification 0.25 and missing 0, weighted double for requirements
+the posting calls essential. `needsVerification` earns a little rather than nothing because
+scoring our own uncertainty as zero would penalise the candidate for our limits.
+
+**When the AI half fails the deterministic half still stands.** Unjudged requirements are
+reported as needing verification rather than missing: we did not look, and "missing" is a
+claim we would not have earned.
+
+**"Missing" describes the document, not the person.** The UI says so in those words, because
+the difference between "your resume does not show this" and "you cannot do this" is the whole
+difference between useful advice and an insult.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

@@ -93,6 +93,7 @@ function makeDeps() {
     }),
     analyzeJob: vi.fn(),
     generateSuggestions: vi.fn(),
+    matchRequirements: vi.fn().mockResolvedValue([]),
   };
 
   const resumeFiles: ResumeFileRepository = {

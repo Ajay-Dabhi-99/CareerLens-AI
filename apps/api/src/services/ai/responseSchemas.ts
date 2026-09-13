@@ -106,3 +106,26 @@ export const suggestionsResponseSchema = {
   },
   required: ['suggestions'],
 } as const;
+
+export const requirementVerdictsResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    verdicts: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          requirementId: { type: Type.STRING },
+          state: {
+            type: Type.STRING,
+            enum: ['matched', 'partial', 'missing', 'needsVerification'],
+          },
+          evidence: { type: Type.STRING },
+          confidence: { type: Type.NUMBER },
+        },
+        required: ['requirementId', 'state', 'confidence'],
+      },
+    },
+  },
+  required: ['verdicts'],
+} as const;

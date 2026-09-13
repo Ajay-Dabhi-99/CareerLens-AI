@@ -100,6 +100,7 @@ function makeDeps() {
     rewriteSection: vi.fn(),
     analyzeJob: vi.fn(),
     generateSuggestions: vi.fn(),
+    matchRequirements: vi.fn().mockResolvedValue([]),
   };
 
   return { resumeFiles, reviews, storage, anonymousSessions, authVerifier, aiProvider };

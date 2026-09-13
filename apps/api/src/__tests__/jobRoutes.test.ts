@@ -90,6 +90,7 @@ function makeDeps() {
       createdAt: new Date().toISOString(),
     }),
     generateSuggestions: vi.fn(),
+    matchRequirements: vi.fn().mockResolvedValue([]),
   };
 
   const editorResumes: ResumeEditorRepository = {

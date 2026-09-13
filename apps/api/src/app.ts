@@ -34,8 +34,11 @@ import {
 } from './modules/editor/index.js';
 import {
   createJobRepository,
+  createJobMatchRepository,
   registerJobRoutes,
+  registerMatchRoutes,
   type JobRepository,
+  type JobMatchRepository,
 } from './modules/jobs/index.js';
 import { createGeminiProvider, DEFAULT_MODEL } from './services/ai/index.js';
 import type { AIProvider } from '@career-lens-ai/types';
@@ -54,6 +57,7 @@ export interface BuildAppOptions {
   editorResumes?: ResumeEditorRepository;
   aiChanges?: AiChangeRepository;
   jobs?: JobRepository;
+  jobMatches?: JobMatchRepository;
   aiProvider?: AIProvider;
 }
 
@@ -132,7 +136,8 @@ export async function buildApp(
     !options.reviews ||
     !options.editorResumes ||
     !options.aiChanges ||
-    !options.jobs;
+    !options.jobs ||
+    !options.jobMatches;
   const supabase = needsSupabase ? createSupabaseAdminClient(env) : null;
 
   const authVerifier =
@@ -181,8 +186,13 @@ export async function buildApp(
   registerEditorRoutes(app, { resumes: editorResumes, resumeFiles, storage });
   registerRewriteRoutes(app, { resumes: editorResumes });
   registerVersionRoutes(app, { resumes: editorResumes });
-  registerJobRoutes(app, {
-    jobs: options.jobs ?? createJobRepository(supabase!),
+  const jobs = options.jobs ?? createJobRepository(supabase!);
+
+  registerJobRoutes(app, { jobs, model: env.GEMINI_MODEL ?? DEFAULT_MODEL });
+  registerMatchRoutes(app, {
+    jobs,
+    matches: options.jobMatches ?? createJobMatchRepository(supabase!),
+    resumes: editorResumes,
     model: env.GEMINI_MODEL ?? DEFAULT_MODEL,
   });
   registerChangeRoutes(app, {

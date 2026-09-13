@@ -138,3 +138,38 @@ export function suggestionsPrompt(resume: Resume, jobRequirements?: string[]): s
     resumeForPrompt(resume),
   ].join('\n');
 }
+
+/**
+ * Asks for a verdict on requirements a keyword lookup could not settle.
+ *
+ * The four states are the spec's, and the distinction that matters most is
+ * between "missing from this resume" and "this person cannot do it" — the model
+ * is told plainly that it is judging a document, not a candidate.
+ */
+export function requirementMatchPrompt(resume: Resume, requirements: string[]): string {
+  return [
+    'Decide, for each requirement below, whether this resume demonstrates it.',
+    '',
+    'Use exactly these states:',
+    '- matched: the resume clearly demonstrates it.',
+    '- partial: related evidence exists, but it is incomplete or indirect.',
+    '- missing: the resume does not show it.',
+    '- needsVerification: you suspect it is met, but the resume does not say so',
+    '  clearly enough for you to claim it.',
+    '',
+    'Rules:',
+    '1. Quote evidence verbatim from the resume. Copy the line exactly. If you',
+    '   cannot quote a line, the state is missing or needsVerification, never',
+    '   matched.',
+    '2. Never infer a skill from a job title or an employer name alone.',
+    '3. "missing" describes this document, not this person. It means the resume',
+    '   does not show the requirement, not that the candidate lacks the skill.',
+    '4. A keyword search has already run. You are being asked about the cases it',
+    '   could not settle, so look for the requirement described in other words.',
+    '',
+    'REQUIREMENTS:',
+    ...requirements.map((text, index) => `${index + 1}. ${text}`),
+    '',
+    resumeForPrompt(resume),
+  ].join('\n');
+}

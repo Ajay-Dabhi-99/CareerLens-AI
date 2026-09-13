@@ -25,6 +25,7 @@ const EXPECTED = [
   { table: 'ai_changes', migration: '0004_phase10_ai_changes.sql' },
   { table: 'job_descriptions', migration: '0006_phase12_job_descriptions.sql' },
   { table: 'job_analyses', migration: '0006_phase12_job_descriptions.sql' },
+  { table: 'job_matches', migration: '0007_phase13_job_matches.sql' },
 ];
 
 function readEnv() {
