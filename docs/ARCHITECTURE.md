@@ -473,6 +473,44 @@ whole sheet is scaled to fit, so line wrapping on screen is line wrapping on pap
 are drawn where they will fall, because three lines spilling onto page two is one of the most
 fixable problems a resume has and one of the least visible without it.
 
+## Export (Phase 16)
+
+**The file is built from the stored version, not from the browser.** Both the audit and the
+DOCX route read the chosen version from the database, so "the downloaded file matches the
+selected version" is true by construction: there is no way to export text that was never
+saved. Any version can be exported — a tailored one is usually what gets sent.
+
+**What a template decides is shared.** Section order, skills layout, the empty-section rule and
+date formatting moved into `packages/types/src/templates.ts`, and both the web preview and the
+DOCX exporter read them. Two copies would eventually disagree, and the file a user downloads
+would list sections in a different order from the page they approved. Only the *look* — fonts,
+sizes, heading treatment — is decided separately, because Word and CSS express it differently.
+
+**DOCX is generated from structured data** with the `docx` library, as the spec requires: every
+word is real, editable text a parser can read. Bullets use real list numbering rather than typed
+characters, which break when a recruiter edits the list. A test unzips the file and asserts the
+section order follows the template.
+
+**PDF is the browser's print-to-PDF of the exact preview component.** It produces selectable
+text from the same `ResumeDocument` the user approved, in print mode so AI markers are absent.
+A separate PDF renderer would be one more thing that could lay the resume out differently. The
+print stylesheet removes, rather than hides, everything but the print root — hidden elements
+still take up space and would add blank pages. The trade-off is honest: the user picks
+"Save as PDF" in the print dialog rather than getting a direct download.
+
+**Completeness is enforced here, and only here.** Drafts may be incomplete so autosave never
+fails mid-edit; `auditForExport` is where that is paid for. Deterministic, no model.
+
+- *Blocking:* no name; no email or phone; nothing to export; and any square-bracketed
+  placeholder or filler text. The last one is the backstop for our own safety mechanism — the
+  rewrite feature deliberately leaves "[X]%" when a stronger line needs a number the resume
+  does not contain, and that must never reach an employer.
+- *Warning:* unchecked AI-written lines, roles without dates or titles, no summary. Shown by
+  location so each is checked individually; the user may stand behind them, so export proceeds.
+
+**The server enforces the audit too.** The DOCX route refuses with 422 while anything blocks,
+rather than trusting that the UI checked first — a direct request must not be a way around it.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

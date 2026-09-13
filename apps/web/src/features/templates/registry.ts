@@ -1,6 +1,11 @@
+import {
+  TEMPLATE_SECTION_ORDER,
+  TEMPLATE_SKILLS_LAYOUT,
+  type TemplateId,
+} from '@career-lens-ai/types';
 import type { TemplateStyle } from '@/features/templates/ResumeDocument';
 
-export type TemplateId = 'modern' | 'minimal' | 'professional' | 'technical' | 'executive';
+export type { TemplateId };
 
 export interface TemplateDefinition {
   id: TemplateId;
@@ -24,7 +29,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     name: 'Modern',
     bestFor: 'Most roles. Clean, with a coloured header that stays readable in black and white.',
     style: {
-      order: ['summary', 'experience', 'projects', 'skills', 'education', 'certifications'],
+      order: TEMPLATE_SECTION_ORDER.modern,
       fontClass: 'font-sans',
       nameClass: 'text-[26px] font-bold tracking-tight',
       headingClass:
@@ -32,7 +37,7 @@ export const TEMPLATES: TemplateDefinition[] = [
       headerClass: 'mb-5 border-l-4 border-teal-700 pl-3',
       sectionGapClass: 'space-y-5',
       bodyClass: 'text-[11.5px] leading-relaxed',
-      skillsLayout: 'grouped',
+      skillsLayout: TEMPLATE_SKILLS_LAYOUT.modern,
     },
   },
   {
@@ -40,14 +45,14 @@ export const TEMPLATES: TemplateDefinition[] = [
     name: 'Minimal',
     bestFor: 'Long histories that need to fit on fewer pages. Dense and quiet.',
     style: {
-      order: ['summary', 'experience', 'education', 'skills', 'projects', 'certifications'],
+      order: TEMPLATE_SECTION_ORDER.minimal,
       fontClass: 'font-sans',
       nameClass: 'text-[22px] font-semibold',
       headingClass: 'mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500',
       headerClass: 'mb-4',
       sectionGapClass: 'space-y-3.5',
       bodyClass: 'text-[11px] leading-snug',
-      skillsLayout: 'inline',
+      skillsLayout: TEMPLATE_SKILLS_LAYOUT.minimal,
     },
   },
   {
@@ -55,7 +60,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     name: 'Professional',
     bestFor: 'Traditional sectors — finance, law, public sector — where convention is expected.',
     style: {
-      order: ['summary', 'experience', 'education', 'certifications', 'skills', 'projects'],
+      order: TEMPLATE_SECTION_ORDER.professional,
       fontClass: 'font-serif',
       nameClass: 'text-center text-[26px] font-semibold',
       headingClass:
@@ -63,7 +68,7 @@ export const TEMPLATES: TemplateDefinition[] = [
       headerClass: 'mb-5 text-center',
       sectionGapClass: 'space-y-4',
       bodyClass: 'text-[11.5px] leading-relaxed',
-      skillsLayout: 'grouped',
+      skillsLayout: TEMPLATE_SKILLS_LAYOUT.professional,
     },
   },
   {
@@ -71,7 +76,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     name: 'Technical',
     bestFor: 'Engineering and data roles, where the stack is read before the employer.',
     style: {
-      order: ['summary', 'skills', 'experience', 'projects', 'education', 'certifications'],
+      order: TEMPLATE_SECTION_ORDER.technical,
       fontClass: 'font-sans',
       nameClass: 'font-mono text-[24px] font-bold',
       headingClass:
@@ -79,7 +84,7 @@ export const TEMPLATES: TemplateDefinition[] = [
       headerClass: 'mb-5 border-b border-neutral-300 pb-3',
       sectionGapClass: 'space-y-4',
       bodyClass: 'text-[11.5px] leading-relaxed',
-      skillsLayout: 'grouped',
+      skillsLayout: TEMPLATE_SKILLS_LAYOUT.technical,
     },
   },
   {
@@ -87,7 +92,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     name: 'Executive',
     bestFor: 'Senior leadership, where the summary and the scope of each role carry the page.',
     style: {
-      order: ['summary', 'experience', 'education', 'certifications', 'skills', 'projects'],
+      order: TEMPLATE_SECTION_ORDER.executive,
       fontClass: 'font-serif',
       nameClass: 'text-[30px] font-bold tracking-tight',
       headingClass:
@@ -95,7 +100,7 @@ export const TEMPLATES: TemplateDefinition[] = [
       headerClass: 'mb-6',
       sectionGapClass: 'space-y-6',
       bodyClass: 'text-[12px] leading-relaxed',
-      skillsLayout: 'inline',
+      skillsLayout: TEMPLATE_SKILLS_LAYOUT.executive,
     },
   },
 ];

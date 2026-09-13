@@ -41,6 +41,7 @@ import {
   type JobRepository,
   type JobMatchRepository,
 } from './modules/jobs/index.js';
+import { registerExportRoutes } from './modules/export/index.js';
 import { createGeminiProvider, DEFAULT_MODEL } from './services/ai/index.js';
 import type { AIProvider } from '@career-lens-ai/types';
 import { createSupabaseAdminClient } from './services/supabase/client.js';
@@ -187,6 +188,7 @@ export async function buildApp(
   registerEditorRoutes(app, { resumes: editorResumes, resumeFiles, storage });
   registerRewriteRoutes(app, { resumes: editorResumes });
   registerVersionRoutes(app, { resumes: editorResumes });
+  registerExportRoutes(app, { resumes: editorResumes });
   const jobs = options.jobs ?? createJobRepository(supabase!);
 
   registerJobRoutes(app, { jobs, model: env.GEMINI_MODEL ?? DEFAULT_MODEL });

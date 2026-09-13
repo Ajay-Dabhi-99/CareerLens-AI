@@ -7,13 +7,18 @@ import { LoadingState } from '@/components/LoadingState';
 import { cn } from '@/lib/utils';
 import {
   getEditorResume,
+  getVersion,
+  listVersions,
   saveDraft,
   StaleDraftError,
   type EditorSnapshot,
+  type ResumeData,
+  type VersionSummary,
 } from '@/features/editor/api/editorApi';
 import { A4Page } from '@/features/templates/components/A4Page';
 import { ResumeDocument } from '@/features/templates/ResumeDocument';
 import { TEMPLATES, templateById, type TemplateId } from '@/features/templates/registry';
+import { ExportPanel } from '@/features/export/ExportPanel';
 
 type LoadState =
   | { kind: 'loading' }
@@ -33,6 +38,10 @@ export function TemplatePreviewPage() {
   const [selected, setSelected] = useState<TemplateId>('modern');
   const [showMarkers, setShowMarkers] = useState(true);
   const [saveNote, setSaveNote] = useState<string | null>(null);
+  const [versions, setVersions] = useState<VersionSummary[]>([]);
+  /** Null means the working draft. */
+  const [versionId, setVersionId] = useState<string | null>(null);
+  const [versionData, setVersionData] = useState<ResumeData | null>(null);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -42,6 +51,11 @@ export function TemplatePreviewPage() {
       .then((snapshot) => {
         setSelected(templateById(snapshot.draft.data.metadata.templateId).id);
         setState({ kind: 'loaded', snapshot });
+        // Any version can be previewed and exported, not only the draft — a
+        // tailored version is usually the one that gets sent.
+        listVersions(snapshot.resume.id)
+          .then(setVersions)
+          .catch(() => setVersions([]));
       })
       .catch((error: unknown) =>
         setState({
@@ -52,6 +66,26 @@ export function TemplatePreviewPage() {
   }, [id]);
 
   useEffect(load, [load]);
+
+  useEffect(() => {
+    if (!id || !versionId) {
+      setVersionData(null);
+      return;
+    }
+
+    let cancelled = false;
+    getVersion(id, versionId)
+      .then((result) => {
+        if (!cancelled) setVersionData(result.version.data);
+      })
+      .catch(() => {
+        if (!cancelled) setVersionId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, versionId]);
 
   async function choose(templateId: TemplateId) {
     if (!id || state.kind !== 'loaded') return;
@@ -82,7 +116,9 @@ export function TemplatePreviewPage() {
     return <ErrorState title="Could not open this resume" description={state.message} onRetry={load} />;
   }
 
-  const resume = state.snapshot.draft.data;
+  // What is on screen is what gets exported: the chosen version, or the draft.
+  const resume = versionData ?? state.snapshot.draft.data;
+  const exportVersionId = versionId ?? state.snapshot.draft.id;
   const template = templateById(selected);
   const unchecked = [...resume.experience, ...resume.projects]
     .flatMap((entry) => entry.bullets)
@@ -120,6 +156,30 @@ export function TemplatePreviewPage() {
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
+        <div className="space-y-4">
+        {versions.length > 1 ? (
+          <div className="space-y-1.5">
+            <label htmlFor="preview-version" className="text-sm font-medium">
+              Version
+            </label>
+            <select
+              id="preview-version"
+              value={versionId ?? ''}
+              onChange={(event) => setVersionId(event.target.value || null)}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Working copy</option>
+              {versions
+                .filter((version) => version.label !== 'draft')
+                .map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {version.name || version.label} · {version.score}
+                  </option>
+                ))}
+            </select>
+          </div>
+        ) : null}
+
         <ul className="space-y-2" aria-label="Templates">
           {TEMPLATES.map((option) => (
             <li key={option.id}>
@@ -143,6 +203,15 @@ export function TemplatePreviewPage() {
             </li>
           ))}
         </ul>
+
+        <ExportPanel
+          resumeId={state.snapshot.resume.id}
+          versionId={exportVersionId}
+          templateId={template.id}
+          templateStyle={template.style}
+          resume={resume}
+        />
+        </div>
 
         <div className="min-w-0">
           <A4Page>

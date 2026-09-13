@@ -1,3 +1,8 @@
+import {
+  formatDateRange,
+  sectionHasContent,
+  type TemplateSection,
+} from '@career-lens-ai/types';
 import type { ResumeData } from '@/features/editor/api/editorApi';
 
 /**
@@ -9,14 +14,8 @@ import type { ResumeData } from '@/features/editor/api/editorApi';
  * in what they say.
  */
 
-/** "Jan 2021 – Present", "2018 – 2022", "Jan 2021", or nothing. */
-export function dateRange(start?: string, end?: string, current = false): string {
-  const from = start?.trim();
-  const to = current ? 'Present' : end?.trim();
-
-  if (from && to) return `${from} – ${to}`;
-  return from || to || '';
-}
+/** "Jan 2021 – Present", "2018 – 2022", "Jan 2021", or nothing. Shared with the exporters. */
+export const dateRange = formatDateRange;
 
 /** Email, phone, location and links on one line, skipping whatever is absent. */
 export function contactItems(resume: ResumeData): string[] {
@@ -27,35 +26,14 @@ export function contactItems(resume: ResumeData): string[] {
     .filter((item): item is string => Boolean(item));
 }
 
-export type SectionKey = 'summary' | 'experience' | 'projects' | 'skills' | 'education' | 'certifications';
+export type SectionKey = TemplateSection;
 
 /**
- * Whether a section has anything to print.
- *
- * A heading over nothing is the most common template bug there is, and on a
- * resume it reads as a gap the candidate forgot to fill. A section is only
- * present when it has real content, not merely a row with empty fields.
+ * Whether a section has anything to print. The rule is shared with the DOCX
+ * exporter, so the preview and the downloaded file agree on what appears.
  */
 export function hasContent(resume: ResumeData, section: SectionKey): boolean {
-  switch (section) {
-    case 'summary':
-      return resume.summary.trim().length > 0;
-    case 'experience':
-      return resume.experience.some(
-        (role) => role.title.trim() || role.company.trim() || role.bullets.some((b) => b.text.trim()),
-      );
-    case 'projects':
-      return resume.projects.some(
-        (project) =>
-          project.name.trim() || project.description?.trim() || project.bullets.some((b) => b.text.trim()),
-      );
-    case 'skills':
-      return resume.skills.some((group) => group.skills.some((skill) => skill.trim()));
-    case 'education':
-      return resume.education.some((entry) => entry.institution.trim() || entry.degree?.trim());
-    case 'certifications':
-      return resume.certifications.some((certification) => certification.name.trim());
-  }
+  return sectionHasContent(resume, section);
 }
 
 /** The sections a template should render, in its preferred order, minus empty ones. */

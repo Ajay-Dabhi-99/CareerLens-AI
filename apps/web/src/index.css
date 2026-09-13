@@ -268,3 +268,38 @@
     transform: none !important;
   }
 }
+
+/*
+ * PDF export.
+ *
+ * The browser's own print-to-PDF produces real, selectable text from exactly the
+ * same component the preview renders, so the saved file cannot drift from what
+ * the user approved. Everything except the print root is removed from the
+ * printed page — removed rather than hidden, because hidden elements still take
+ * up space and would add blank pages.
+ */
+#print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body > *:not(#print-root) {
+    display: none !important;
+  }
+
+  #print-root {
+    display: block !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
