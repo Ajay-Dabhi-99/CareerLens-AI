@@ -437,6 +437,42 @@ since, and replacing the wrong thing on a resume is worse than leaving a suggest
 Rewritten bullets keep `source: 'ai'` so tailoring does not launder AI wording into text that
 looks reviewed.
 
+## Templates (Phase 15)
+
+Modern, Minimal, Professional, Technical and Executive, from the spec. No migration: the choice
+is stored in `metadata.templateId` on the draft, which the types and the draft validator
+already carried, so it travels with the resume into versions and export.
+
+**Five style objects, one renderer.** `ResumeDocument` renders every template; a template is a
+`TemplateStyle` — typography, spacing, heading treatment and, above all, section order.
+Five components would have been five places to forget an empty-section check or format a date
+differently, and the templates would drift into disagreeing about what the resume *says*.
+Shared rules (date ranges, contact line, which sections have content) live once in
+`templates/lib/format.ts`. A parameterised test asserts every template renders identical
+content.
+
+**Every template is single-column, with document order as reading order.** Multi-column
+resumes look good and parse badly: filters read text in document order, and a sidebar
+interleaves with the main column. Templates vary emphasis through order instead — Technical
+puts skills ahead of experience, Executive leads with the summary and long roles. A test
+asserts each template's headings appear in its declared order.
+
+**Empty sections print nothing.** A heading over an empty row reads as a gap the candidate
+forgot to fill, so a section counts as present only when it has real content, not merely a
+row with blank fields.
+
+**Colours are fixed, not themed.** A resume is printed on white paper whether or not its
+author prefers dark mode.
+
+**Unchecked AI lines are marked in preview and never in print.** Preview is the last point at
+which the user reads the resume before it leaves, so an unverified AI-written bullet is
+highlighted there; a marker on the exported document would mean nothing to the reader.
+
+**The A4 preview scales the page, not the text.** Content is laid out at true A4 width and the
+whole sheet is scaled to fit, so line wrapping on screen is line wrapping on paper. Page breaks
+are drawn where they will fall, because three lines spilling onto page two is one of the most
+fixable problems a resume has and one of the least visible without it.
+
 ## Versioning model
 
 A canonical master resume with derived versions (original, AI-improved, job-tailored per

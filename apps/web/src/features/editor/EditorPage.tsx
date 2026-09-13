@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BookmarkPlus, Redo2, RotateCcw, Undo2 } from 'lucide-react';
+import { ArrowLeft, BookmarkPlus, Eye, Redo2, RotateCcw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ErrorState';
@@ -336,6 +336,19 @@ export function EditorPage() {
           >
             <BookmarkPlus />
             Save version
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              // Saved first, so the preview shows what was just typed rather
+              // than whatever the server held before the debounce fired.
+              await saveNow();
+              navigate(`/editor/${id}/preview`);
+            }}
+          >
+            <Eye />
+            Preview
           </Button>
           <Button
             size="sm"

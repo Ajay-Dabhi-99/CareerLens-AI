@@ -12,7 +12,7 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
 
 ## Status
 
-**Phase 2 — Authentication.** Done so far:
+**Phase 15 — Templates.** Done so far:
 
 - **Phase 0 — Foundation:** monorepo, React app, Fastify API, shared types/validation
   packages, lint, tests, environment config.
@@ -66,6 +66,10 @@ Claude Code are in [CLAUDE.md](CLAUDE.md).
 - **Phase 14 — Tailored resumes:** targeted suggestions for one posting, approved one at a
   time, saved as a new version named after the job. Your working copy and original are
   never touched, and nothing adds experience you do not have.
+
+- **Phase 15 — Templates:** Modern, Minimal, Professional, Technical and Executive, all
+  rendering the same resume on an A4 preview with page breaks shown. Every template is
+  single-column so filters read it in the intended order.
 
 **Database setup:** run every file in `supabase/migrations/` in order, in the Supabase SQL
 editor, before starting the API. Each ends with `notify pgrst, 'reload schema'` — without
