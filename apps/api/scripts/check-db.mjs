@@ -71,6 +71,49 @@ for (const { table, migration } of EXPECTED) {
   }
 }
 
+/**
+ * Migrations that change something other than whether a table exists.
+ *
+ * Each probe is written so it cannot write anything: the row is aimed at a
+ * resume id that does not exist, so the insert always fails. Which error comes
+ * back is the answer — Postgres evaluates a CHECK constraint before the foreign
+ * key, so a rejected value means the old constraint is still in place, and a
+ * foreign key complaint means the value was accepted and the migration is in.
+ */
+const CHECKS = [
+  {
+    describe: "resume_versions accepts 'snapshot'",
+    migration: '0005_phase11_versions.sql',
+    async run() {
+      const { error } = await client.from('resume_versions').insert({
+        resume_id: '00000000-0000-0000-0000-000000000000',
+        user_id: '00000000-0000-0000-0000-000000000000',
+        label: 'snapshot',
+        data: {},
+      });
+
+      // 23514 is a check-constraint violation: the label was refused.
+      return error?.code !== '23514';
+    },
+  },
+];
+
+for (const check of CHECKS) {
+  let ok = false;
+  try {
+    ok = await check.run();
+  } catch {
+    ok = false;
+  }
+
+  if (ok) {
+    console.log(`  ok       ${check.describe}`);
+  } else {
+    console.log(`  missing  ${check.describe.padEnd(30)} (${check.migration})`);
+    missing.add(check.migration);
+  }
+}
+
 if (missing.size === 0) {
   console.log('\nAll migrations applied.');
   process.exit(0);
