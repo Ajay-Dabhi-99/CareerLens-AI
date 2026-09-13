@@ -52,3 +52,8 @@ create policy "job_matches_delete_own" on public.job_matches
   for delete using (auth.uid() = user_id);
 
 notify pgrst, 'reload schema';
+
+-- Proves it worked. Should return one row: public | job_matches | true.
+select schemaname, tablename, rowsecurity
+from pg_tables
+where schemaname = 'public' and tablename = 'job_matches';
